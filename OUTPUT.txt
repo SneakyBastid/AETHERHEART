@@ -1,6 +1,46 @@
+// ===================================================================
+// AETHERHEART — OUTPUT
+// Paste this whole file into the "Output" script tab.
+// ===================================================================
+
+function onOutput_Aetherheart(text) {
+  ahInit();
+  var s = state.AH.settings;
+  var f = state.AH.flags;
+
+  var prefix = "";
+
+  if (f.d20Roll) {
+    prefix += "🎲 d20 " + f.d20Roll.kind + " roll: " + f.d20Roll.roll + "\n\n";
+    f.d20Roll = null;
+  }
+
+  if (f.rest) {
+    ahRest();
+    prefix += "(Rested. Time passed.)\n\n";
+    f.rest = false;
+  } else {
+    ahAdvanceTime(s.minutesPerTurn);
+  }
+
+  ahTickSurvival(s.minutesPerTurn);
+
+  if (f.refuel) {
+    ahRefuel();
+    prefix += "(" + (ahCurrencyInfo().fuelName || "Fuel") + " restored.)\n\n";
+    f.refuel = false;
+  }
+  if (f.checkBounty) { prefix += "(Bounty Board checked.)\n\n"; f.checkBounty = false; }
+  if (f.checkJob) { prefix += "(Job Board checked.)\n\n"; f.checkJob = false; }
+
+  text = ahRunCardCreator(text);
+
+  return prefix + text;
+}
+
 const modifier = (text) => {
   try {
-    if (typeof onOutput_Aetherheart === "function") text = onOutput_Aetherheart(text);
+    text = onOutput_Aetherheart(text);
   } catch (e) {
     try { state.message = "AH Output: " + (e && e.message ? e.message : e); } catch (e2) {}
   }
