@@ -1,6 +1,6 @@
-// INNER THOUGHTS (Inner Self compatible) — minimal patch (NO TIMESTAMPS)
+// INNER THOUGHTS (Inner Self compatible) — store into card NOTES (NO TIMESTAMPS)
 // Behavior: extract {title: Name} blocks from player input, remove them from narration,
-// and store as single-line notes in state.aetherheart.innerSelfMemories only
+// and store as single-line notes in the story card's `notes` field only
 // if a story card exists whose first non-empty line contains the top marker {memories: ON}.
 // Does NOT write to card entries and does NOT include any timestamps or savedAt metadata.
 
@@ -22,16 +22,24 @@
     return -1;
   }
 
-  // Append memory object into state.aetherheart.innerSelfMemories (no timestamps)
-  function appendMemoryToState(cardIndex, noteLine) {
-    state.aetherheart = state.aetherheart || {};
-    state.aetherheart.innerSelfMemories = state.aetherheart.innerSelfMemories || [];
-    var cardTitle = (storyCards && storyCards[cardIndex] && (storyCards[cardIndex].title || storyCards[cardIndex].keys)) || null;
-    state.aetherheart.innerSelfMemories.push({
-      cardIndex: cardIndex,
-      cardTitle: cardTitle,
-      note: noteLine
-    });
+  // Append memory string directly into the story card's `notes` property (no timestamps)
+  function appendMemoryToCardNotes(cardIndex, noteLine) {
+    if (!Array.isArray(storyCards) || cardIndex < 0 || cardIndex >= storyCards.length) return;
+    var card = storyCards[cardIndex];
+    try {
+      // Keep existing notes if present, append on its own line
+      var existing = card.notes || '';
+      if (existing && existing.trim() !== '') {
+        card.notes = existing + '\n' + noteLine;
+      } else {
+        card.notes = noteLine;
+      }
+    } catch (e) {
+      // Fallback: if mutation fails, ensure state has a mirror storage keyed by cardIndex
+      state.aetherheart = state.aetherheart || {};
+      state.aetherheart.innerSelfNotesFallback = state.aetherheart.innerSelfNotesFallback || {};
+      state.aetherheart.innerSelfNotesFallback[cardIndex] = (state.aetherheart.innerSelfNotesFallback[cardIndex] || '') + (state.aetherheart.innerSelfNotesFallback[cardIndex] ? '\n' + noteLine : noteLine);
+    }
   }
 
   // Extract and store inner-self blocks from input text (no timestamps in note)
@@ -59,7 +67,7 @@
       var contentSingle = mm.content.replace(/\s+/g, ' ').trim();
       var noteLine = "{title: " + mm.name + "} — " + contentSingle;
       if (cardIdx !== -1) {
-        appendMemoryToState(cardIdx, noteLine);
+        appendMemoryToCardNotes(cardIdx, noteLine);
       }
       // Remove block entirely from player-visible text
       cleaned = cleaned.replace(mm.full, '\n');
