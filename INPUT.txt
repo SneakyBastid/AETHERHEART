@@ -1,0 +1,5 @@
+const modifier = (text) => {
+  text = onInput_Aetherheart(text);
+  return { text };
+};
+modifier(text);
