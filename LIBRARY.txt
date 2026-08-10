@@ -1,8 +1,9 @@
-// INNER THOUGHTS (Inner Self compatible) — store into card NOTES (NO TIMESTAMPS)
+// INNER THOUGHTS (Inner Self compatible) — store into card.notes only (NO TIMESTAMPS, NO FALLBACK)
 // Behavior: extract {title: Name} blocks from player input, remove them from narration,
 // and store as single-line notes in the story card's `notes` field only
 // if a story card exists whose first non-empty line contains the top marker {memories: ON}.
-// Does NOT write to card entries and does NOT include any timestamps or savedAt metadata.
+// Does NOT write to card entries and DOES NOT include any timestamps or savedAt metadata.
+// DOES NOT create any fallback state. If direct mutation of card.notes fails, the memory is not stored.
 
 (function(){
   // Find most recent story card whose first non-empty line matches markerRegex
@@ -22,12 +23,11 @@
     return -1;
   }
 
-  // Append memory string directly into the story card's `notes` property (no timestamps)
+  // Append memory string directly into the story card's `notes` property (no timestamps, no fallback)
   function appendMemoryToCardNotes(cardIndex, noteLine) {
     if (!Array.isArray(storyCards) || cardIndex < 0 || cardIndex >= storyCards.length) return;
     var card = storyCards[cardIndex];
     try {
-      // Keep existing notes if present, append on its own line
       var existing = card.notes || '';
       if (existing && existing.trim() !== '') {
         card.notes = existing + '\n' + noteLine;
@@ -35,10 +35,7 @@
         card.notes = noteLine;
       }
     } catch (e) {
-      // Fallback: if mutation fails, ensure state has a mirror storage keyed by cardIndex
-      state.aetherheart = state.aetherheart || {};
-      state.aetherheart.innerSelfNotesFallback = state.aetherheart.innerSelfNotesFallback || {};
-      state.aetherheart.innerSelfNotesFallback[cardIndex] = (state.aetherheart.innerSelfNotesFallback[cardIndex] || '') + (state.aetherheart.innerSelfNotesFallback[cardIndex] ? '\n' + noteLine : noteLine);
+      // Intentionally do nothing on failure — do NOT create fallbacks or write elsewhere.
     }
   }
 

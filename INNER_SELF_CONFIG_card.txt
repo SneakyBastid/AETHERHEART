@@ -1,0 +1,24 @@
+Inner Self — Config (paste this whole card; do NOT add per-name lists here)
+
+Inner Self configuration and help
+--------------------------------
+This card documents Inner Self behavior and available settings. Per-card activation is handled via the top-of-card marker {memories: ON} placed as the first non-empty line of any story card that should accept memories.
+
+Do not edit: name lists are obsolete. Use per-card markers:
+  {memories: ON}  — enables inner-thought capture into this card's notes field.
+
+Behavior summary:
+- Input blocks of the form:
+  {title: Name}
+  <one or more lines>
+  (blank line or EOF)
+  are removed from visible narration and, if a marked card exists, appended as single-line notes to that card's notes field as:
+  {title: Name} — <normalized single-line text>
+
+- No timestamps are added. No other card fields are modified.
+- If direct mutation of card.notes fails in your runtime, the memory is silently not stored (no fallback).
+
+Notes for maintainers:
+- Call extractAndStoreInnerSelf(text) at the very start of onInput.
+- To change the activation marker, edit the markerRegex in LIBRARY.txt.
+- This card replaces per-name entry behavior; do not rely on config-stored name lists.
