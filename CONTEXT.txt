@@ -1,1 +1,105 @@
+// ===================================================================
+// AETHERHEART — CONTEXT
+// Paste this whole file into the "Context" script tab.
+// This prepends a hidden, AI-facing [CURRENT WORLD STATE] block each turn.
+// It uses state.aetherheart as the canonical store and follows the Grok-approved
+// card surfaces. Inner Thoughts are routed into the Notes of the Character Minds
+// card using the {title: Name} marker. No UBIS/Realmheart names remain.
+// ===================================================================
 
+function ahInit() {
+  if (!state.aetherheart) state.aetherheart = {};
+  if (!state.aetherheart.config) state.aetherheart.config = {};
+  // minimal defaults if missing
+  var s = state.aetherheart;
+  if (!s.settings) s.settings = { time: true, weather: true, holidays: true, inventory: true, currency: true, vitals: true, memories: true };
+  if (!s.purse) s.purse = { gold: 5, silver: 2 };
+  if (!s.carrying) s.carrying = ["Traveler's Pack (1)", "Torch (3)", "Rations (5)", "Dagger (1)"];
+  if (!s.time) s.time = { hour: 6, minute: 0, day: 1, month: 1, year: 1200, adventureDay: 1, season: "Deep Winter", weather: "Heavy Snow" };
+  if (!s.holidays) s.holidays = [];
+  if (!s.journal) s.journal = { entries: [], summary: "", nextAutoIn: 8 };
+}
+
+function ahLoadConfigFromCard() {
+  // If Configure Aetherheart card exists, parse relevant lines and update settings
+  var title = "CONFIGURE AETHERHEART";
+  var idx = -1;
+  for (var i=0;i<storyCards.length;i++) { if (storyCards[i].title === title) { idx = i; break;} }
+  if (idx === -1) return; // no config card yet
+  var lines = storyCards[idx].entry.split("\n");
+  var s = state.aetherheart.settings;
+  for (var j=0;j<lines.length;j++) {
+    var l = lines[j].trim();
+    if (/^Time\b/i.test(l)) s.time = /ON/i.test(l);
+    if (/^Weather\b/i.test(l)) s.weather = /ON/i.test(l);
+    if (/^Holidays\b/i.test(l)) s.holidaysEnabled = /ON/i.test(l);
+    if (/^Inventory\b/i.test(l)) s.inventory = /ON/i.test(l);
+  }
+}
+
+function ahFindCard(title) {
+  for (var i=0;i<storyCards.length;i++) if (storyCards[i].title === title) return i;
+  return -1;
+}
+
+function ahAppendInnerThought(characterName, text) {
+  // Append inner thought to notes on Character Minds card as: {title: Name} thought line
+  var idx = ahFindCard("CHARACTER MINDS");
+  var noteLine = "{" + "title: " + characterName + "} " + text;
+  if (idx === -1) {
+    addStoryCard("CHARACTER MINDS", noteLine, "Aetherheart");
+  } else {
+    // append to existing card's notes (we use the card's entry as the notes area)
+    var entry = storyCards[idx].entry || "";
+    entry = entry + "\n" + noteLine;
+    updateStoryCard(idx, storyCards[idx].keys || "CHARACTER MINDS", entry, "Aetherheart");
+  }
+}
+
+function ahBuildWorldState() {
+  var s = state.aetherheart;
+  var lines = [];
+  lines.push("[CURRENT WORLD STATE -- use this as ground truth for the scene. Answer any player questions about time, date, money, inventory, or weather from this block. Prioritize any [EVENT] entries below when narrating the scene.]");
+  // Purse
+  var purseParts = [];
+  if (s.purse.gold) purseParts.push(s.purse.gold + " Gold");
+  if (s.purse.silver) purseParts.push(s.purse.silver + " Silver");
+  lines.push("Purse: " + (purseParts.length ? purseParts.join(", ") : "0 Gold"));
+  // Carrying
+  lines.push("Carrying: " + (s.carrying && s.carrying.length ? s.carrying.join(" | ") : "Empty"));
+  // Time & Date
+  var hh = s.time.hour || 0; var mm = s.time.minute || 0; var ampm = (hh<12 || hh===24)?"AM":"PM"; var h12 = hh%12; if (h12===0) h12=12;
+  lines.push("Time: " + h12 + ":" + (mm<10?"0":"") + mm + " " + ampm);
+  var monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var monthStr = monthNames[(s.time.month||1)-1] || "Month";
+  lines.push("Date: " + monthStr + " " + (s.time.day||1) + ", Year " + (s.time.year||1200) + " (Adventure day " + (s.time.adventureDay||1) + ")");
+  // Season & Weather
+  lines.push("Season: " + (s.time.season || "") + " | Weather: " + (s.time.weather || ""));
+  // Holidays / Events: include today's event and upcoming
+  if (s.holidays && s.holidays.length) {
+    var todays = s.holidays.filter(function(h){ return h.on !== false && Number(h.month) === Number(s.time.month) && Number(h.day) === Number(s.time.day); });
+    if (todays.length) {
+      todays.forEach(function(h){ lines.push("** " + h.name + " (" + (h.type||"event") + ")"); if (h.description) lines.push(h.description); });
+    }
+  }
+  lines.push("[END WORLD STATE]");
+  return lines.join("\n");
+}
+
+function onContext_AETHER(text) {
+  ahInit();
+  ahLoadConfigFromCard();
+  var block = ahBuildWorldState();
+  // Prepend so the model sees world state first; keep separation so story appears after.
+  return block + "\n\n" + text;
+}
+
+const modifier = (text) => {
+  try {
+    text = onContext_AETHER(text);
+  } catch (e) {
+    try { state.message = "AETHER Context: " + (e && e.message ? e.message : e); } catch (e2) {}
+  }
+  return { text };
+};
+modifier(text);
