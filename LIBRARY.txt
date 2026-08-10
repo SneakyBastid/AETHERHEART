@@ -1,24 +1,10 @@
-// INNER THOUGHTS (Inner Self compatible) — minimal patch
+// INNER THOUGHTS (Inner Self compatible) — minimal patch (NO TIMESTAMPS)
 // Behavior: extract {title: Name} blocks from player input, remove them from narration,
-// and store as single-line timestamped notes in state.aetherheart.innerSelfMemories only
+// and store as single-line notes in state.aetherheart.innerSelfMemories only
 // if a story card exists whose first non-empty line contains the top marker {memories: ON}.
-// Does NOT write to card entries. Timestamp uses in-game time if available, else ISO.
+// Does NOT write to card entries and does NOT include any timestamps or savedAt metadata.
 
 (function(){
-  // Helper: format in-game timestamp if present, else ISO UTC
-  function formatGameTimestamp() {
-    try {
-      var T = state && state.aetherheart && state.aetherheart.time;
-      if (!T) return (new Date()).toISOString();
-      var h = (T.hour % 12) || 12;
-      var ampm = (T.hour < 12) ? "AM" : "PM";
-      var mn = (T.minute < 10 ? "0" + T.minute : T.minute);
-      var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-      var month = months[(T.month||1) - 1] || "Month";
-      return month + " " + (T.day||1) + ", Year " + (T.year||0) + " " + h + ":" + mn + " " + ampm + " (adv day " + (T.adventureDay||1) + ")";
-    } catch (e) { return (new Date()).toISOString(); }
-  }
-
   // Find most recent story card whose first non-empty line matches markerRegex
   function findMostRecentMarkedCard(markerRegex) {
     if (!Array.isArray(storyCards)) return -1;
@@ -36,7 +22,7 @@
     return -1;
   }
 
-  // Append memory object into state.aetherheart.innerSelfMemories
+  // Append memory object into state.aetherheart.innerSelfMemories (no timestamps)
   function appendMemoryToState(cardIndex, noteLine) {
     state.aetherheart = state.aetherheart || {};
     state.aetherheart.innerSelfMemories = state.aetherheart.innerSelfMemories || [];
@@ -44,12 +30,11 @@
     state.aetherheart.innerSelfMemories.push({
       cardIndex: cardIndex,
       cardTitle: cardTitle,
-      note: noteLine,
-      savedAt: (new Date()).toISOString()
+      note: noteLine
     });
   }
 
-  // Extract and store inner-self blocks from input text
+  // Extract and store inner-self blocks from input text (no timestamps in note)
   function extractAndStoreInnerSelf(text) {
     if (!text) return text;
     // Regex: match blocks that start with {title: Name} then capture following lines until a blank line or end
@@ -72,8 +57,7 @@
         return;
       }
       var contentSingle = mm.content.replace(/\s+/g, ' ').trim();
-      var ts = (state && state.aetherheart && state.aetherheart.time) ? formatGameTimestamp() : (new Date()).toISOString();
-      var noteLine = "{title: " + mm.name + "} " + ts + " — " + contentSingle;
+      var noteLine = "{title: " + mm.name + "} — " + contentSingle;
       if (cardIdx !== -1) {
         appendMemoryToState(cardIdx, noteLine);
       }
@@ -88,7 +72,6 @@
   if (typeof window !== 'undefined') {
     window.extractAndStoreInnerSelf = window.extractAndStoreInnerSelf || extractAndStoreInnerSelf;
   } else {
-    // In some library environments the global scope is different; attach to the global object if possible
     try { this.extractAndStoreInnerSelf = this.extractAndStoreInnerSelf || extractAndStoreInnerSelf; } catch (e) {}
   }
 
