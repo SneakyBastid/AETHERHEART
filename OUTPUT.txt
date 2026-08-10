@@ -1,5 +1,9 @@
 const modifier = (text) => {
-  text = onOutput_Aetherheart(text);
+  try {
+    if (typeof onOutput_Aetherheart === "function") text = onOutput_Aetherheart(text);
+  } catch (e) {
+    try { state.message = "AH Output: " + (e && e.message ? e.message : e); } catch (e2) {}
+  }
   return { text };
 };
 modifier(text);
