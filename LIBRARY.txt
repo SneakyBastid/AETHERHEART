@@ -1,5 +1,5 @@
 // LIBRARY - AETHERHEART
-// Includes: Inner Thoughts (stores into card.notes) and Card Creator (Card Forge) implementation
+// Includes: Inner Thoughts (stores into card.notes), Card Creator (Card Forge), and Character Minds
 
 // --------------------------
 // INNER THOUGHTS (Inner Self compatible)
@@ -25,7 +25,7 @@
 
   // Append memory string directly into the story card's `notes` property (no timestamps, no fallback)
   function appendMemoryToCardNotes(cardIndex, noteLine) {
-    if (!Array.isArray(storyCards) || cardIndex < 0 || cardIndex >= storyCards.length) return;
+    if (!Array.isArray(storyCards) || cardIndex < 0 || cardIndex >= storyCards.length) return false;
     var card = storyCards[cardIndex];
     try {
       var existing = card.notes || '';
@@ -34,8 +34,10 @@
       } else {
         card.notes = noteLine;
       }
+      return true;
     } catch (e) {
       // Intentionally do nothing on failure — do NOT create fallbacks or write elsewhere.
+      return false;
     }
   }
 
@@ -293,4 +295,90 @@
   // - Provide template story cards named exactly: 'TEMPLATE: Character', 'TEMPLATE: Location', etc.
   // - Each template card must begin with two top-level fields: 'Rules:' then 'Format:' followed by the desired format lines.
   // - Create a Configure Aetherheart card titled exactly 'CONFIGURE AETHERHEART' to control toggles (Aetherheart Cards: ON/OFF, Min turns cooldown: N, Auto-detect card type: ON/OFF, New cards do memory updates: ON/OFF).
+})();
+
+
+// --------------------------
+// CHARACTER MINDS (Inner Memory subsystem)
+// - Tracks listed characters and appends memories into their story-card notes when asked
+// - Does NOT add timestamps or metadata. Does NOT create fallback storage.
+// --------------------------
+(function(){
+  var POSSIBLE_CONFIG_TITLES = ['CHARACTER MINDS','INNER MEMORY','INNER MEMORY CARD','INNER MEMORY:'];
+
+  function findConfigCard() {
+    if (!Array.isArray(storyCards)) return null;
+    for (var i = 0; i < storyCards.length; i++) {
+      var t = (storyCards[i] && storyCards[i].title) || '';
+      if (POSSIBLE_CONFIG_TITLES.indexOf(t.toUpperCase()) !== -1) return storyCards[i];
+    }
+    return null;
+  }
+
+  function parseTrackedCharacters(card) {
+    if (!card || !card.entry) return [];
+    var lines = card.entry.split(/\r?\n/);
+    for (var i = 0; i < lines.length; i++) {
+      var ln = lines[i].trim();
+      var m = ln.match(/^Tracked characters:\s*(.*)$/i);
+      if (m) {
+        var raw = m[1] || '';
+        return raw.split(/\s*,\s*/).map(function(x){ return x.trim(); }).filter(Boolean);
+      }
+    }
+    return [];
+  }
+
+  // Find a story card whose title exactly matches characterName (case-sensitive match to avoid collisions)
+  function findCharacterCard(characterName) {
+    if (!Array.isArray(storyCards)) return null;
+    for (var i = 0; i < storyCards.length; i++) {
+      var c = storyCards[i];
+      if (!c || !c.title) continue;
+      if (c.title === characterName) return { card: c, index: i };
+    }
+    return null;
+  }
+
+  // Append a memory to a character's card notes, but only if that card exists and its first non-empty line is a {memories: ON} marker
+  function addMemoryToCharacter(characterName, memoryText) {
+    if (!characterName || !memoryText) return false;
+    var found = findCharacterCard(characterName);
+    if (!found) return false;
+    var card = found.card;
+    // Check first non-empty line marker
+    var lines = (card.entry||'').split(/\r?\n/);
+    var first = null;
+    for (var i = 0; i < lines.length; i++) { if (lines[i].trim() !== '') { first = lines[i].trim(); break; } }
+    if (!first) return false;
+    var markerRegex = /^\{\s*memories\s*:\s*(on|true|yes)\s*\}$/i;
+    if (!markerRegex.test(first)) return false;
+    // Build note line exactly: {title: Name} — <single-line normalized memory>
+    var normalized = memoryText.replace(/\s+/g,' ').trim();
+    var noteLine = '{title: ' + characterName + '} — ' + normalized;
+    // Append to card.notes
+    try {
+      var existing = card.notes || '';
+      card.notes = (existing && existing.trim()) ? (existing + '\n' + noteLine) : noteLine;
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Public API
+  var CharacterMinds = {
+    getTrackedCharacters: function(){
+      var cfg = findConfigCard();
+      return parseTrackedCharacters(cfg);
+    },
+    addMemory: function(name, text){ return addMemoryToCharacter(name, text); }
+  };
+
+  if (typeof window !== 'undefined') {
+    window.CharacterMinds = window.CharacterMinds || CharacterMinds;
+  } else {
+    try { this.CharacterMinds = this.CharacterMinds || CharacterMinds; } catch (e) {}
+  }
+
 })();

@@ -1,0 +1,12 @@
+CHARACTER MINDS
+
+Tracked characters: Father Aldric, Sister Maren, Captain Voss
+
+Notes:
+- This card configures which characters are tracked by the Character Minds subsystem.
+- Use the 'Tracked characters:' line (comma-separated) to list character card titles that should accept memories.
+- For a character to receive memories, its own story card must exist and its first non-empty line must be the activation marker:
+  {memories: ON}
+- Memories are appended to the character card's notes field exactly as:
+  {title: <CharacterName>} — <single-line memory text>
+- No timestamps, no metadata, and no fallback storage are used.
