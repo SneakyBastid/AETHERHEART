@@ -1,0 +1,16 @@
+== CONFIGURE AETHERHEART ==
+[Changes apply on the next turn.]
+
+-- AETHERHEART CARDS --
+Aetherheart Cards: ON
+Auto-detect card type: ON
+Min turns cooldown: 12
+New cards do memory updates: OFF
+
+-- CARD TEMPLATES --
+(Templates live in story cards named: TEMPLATE: Character, TEMPLATE: Location, TEMPLATE: Race, TEMPLATE: Class-Faction, TEMPLATE: Other)
+
+-- USAGE --
+/card <Type> "Title" <details>
+Example: /card Character "Sister Maren" she is starting to suspect the journal
+(When invoked the story should be suspended and only the generated card content should be returned.)

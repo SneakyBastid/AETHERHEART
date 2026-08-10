@@ -1,10 +1,10 @@
-// INNER THOUGHTS (Inner Self compatible) — store into card.notes only (NO TIMESTAMPS, NO FALLBACK)
-// Behavior: extract {title: Name} blocks from player input, remove them from narration,
-// and store as single-line notes in the story card's `notes` field only
-// if a story card exists whose first non-empty line contains the top marker {memories: ON}.
-// Does NOT write to card entries and DOES NOT include any timestamps or savedAt metadata.
-// DOES NOT create any fallback state. If direct mutation of card.notes fails, the memory is not stored.
+// LIBRARY - AETHERHEART
+// Includes: Inner Thoughts (stores into card.notes) and Card Creator (Card Forge) implementation
 
+// --------------------------
+// INNER THOUGHTS (Inner Self compatible)
+// (store into card.notes only — NO TIMESTAMPS, NO FALLBACK)
+// --------------------------
 (function(){
   // Find most recent story card whose first non-empty line matches markerRegex
   function findMostRecentMarkedCard(markerRegex) {
@@ -93,4 +93,204 @@
   } catch (e) {}
 
   // USAGE: Call extractAndStoreInnerSelf(text) at the very start of your onInput handler.
+})();
+
+
+// --------------------------
+// CARD CREATOR / CARD FORGE
+// - Uses template story cards that contain two fields at top: "Rules:" and "Format:"
+// - Provides a /card command that suspends narration and returns only the generated card text
+// - Auto-detection and cooldowns are controlled via a Configure Aetherheart card
+// Note: This module follows the blueprint from GROK CHAT; it reads template cards from storyCards
+// --------------------------
+(function(){
+  var CFG_TITLE = 'CONFIGURE AETHERHEART';
+  var TEMPLATE_PREFIX = 'TEMPLATE: ';
+  var DEFAULT_COOLDOWN = 12;
+
+  // Helpers -------------------------------------------------
+  function findCardByTitle(title) {
+    if (!Array.isArray(storyCards)) return null;
+    for (var i = 0; i < storyCards.length; i++) {
+      if (storyCards[i] && storyCards[i].title === title) return storyCards[i];
+    }
+    return null;
+  }
+
+  // Read master configuration from the Configure Aetherheart card (if present)
+  function readMasterConfig() {
+    var cfg = {
+      aetherheartCards: true,
+      autoDetect: true,
+      minCooldown: DEFAULT_COOLDOWN,
+      newCardsDoMemory: false
+    };
+    var card = findCardByTitle(CFG_TITLE);
+    if (!card || !card.entry) return cfg;
+    // Parse simple lines like 'Aetherheart Cards: ON' 'Min turns cooldown: 12' (case-insensitive)
+    var lines = card.entry.split(/\r?\n/);
+    lines.forEach(function(l){
+      var s = l.trim();
+      var m;
+      if (/^Aetherheart Cards:\s*ON$/i.test(s)) cfg.aetherheartCards = true;
+      if (/^Aetherheart Cards:\s*OFF$/i.test(s)) cfg.aetherheartCards = false;
+      m = s.match(/^Min turns cooldown:\s*(\d+)/i);
+      if (m) cfg.minCooldown = parseInt(m[1],10) || cfg.minCooldown;
+      if (/^New cards do memory updates:\s*ON$/i.test(s)) cfg.newCardsDoMemory = true;
+      if (/^New cards do memory updates:\s*OFF$/i.test(s)) cfg.newCardsDoMemory = false;
+      if (/^Auto-detect card type:\s*ON$/i.test(s)) cfg.autoDetect = true;
+      if (/^Auto-detect card type:\s*OFF$/i.test(s)) cfg.autoDetect = false;
+    });
+    return cfg;
+  }
+
+  // Load template by type. Template story card title must be "TEMPLATE: <Type>" and its entry must contain
+  // top-level fields:
+  // Rules:
+  // <blank or rules>
+  // Format:
+  // <format lines>
+  function loadTemplate(type) {
+    var title = TEMPLATE_PREFIX + type;
+    var card = findCardByTitle(title);
+    if (!card || !card.entry) return { rules: '', formatLines: [] };
+    var entry = card.entry.replace(/\r/g,'');
+    var lines = entry.split('\n');
+    var section = null;
+    var rules = [];
+    var formatLines = [];
+    for (var i = 0; i < lines.length; i++) {
+      var ln = lines[i];
+      if (/^\s*Rules\s*:/i.test(ln)) { section = 'rules'; continue; }
+      if (/^\s*Format\s*:/i.test(ln)) { section = 'format'; continue; }
+      if (/^\s*Notes\s*:/i.test(ln)) { break; } // stop at notes
+      if (!section) continue;
+      if (section === 'rules') rules.push(ln);
+      if (section === 'format') formatLines.push(ln);
+    }
+    return { rules: (rules.join('\n')||''), formatLines: formatLines.map(function(l){ return l.trim(); }).filter(Boolean) };
+  }
+
+  // Build card text from template formatLines and provided fields
+  // formatLines is an array of labels like ['Name:', 'Appearance:', 'Personality:']
+  // title and details are strings — details may be a freeform description the user provided
+  function buildCardText(formatLines, title, details) {
+    var out = [];
+    // If format contains a Name: line, place the title there; otherwise put Title at top
+    var inserted = false;
+    formatLines.forEach(function(l){
+      if (/^Name\s*:\s*$/i.test(l)) {
+        out.push('Name: ' + title);
+        inserted = true;
+      } else {
+        // Try to fill the first non-Name field with provided details
+        if (!inserted && /^(Appearance|Description|Description:|Role|Description:)$/i.test(l)) {
+          out.push(l + ' ' + details);
+          inserted = true;
+        } else {
+          out.push(l);
+        }
+      }
+    });
+    if (!inserted) {
+      // No Name field, so put Title as first line
+      out.unshift(title);
+    }
+    return out.join('\n');
+  }
+
+  // Create a new story card object (note: in many runtimes you must call an API to persist; here we return an object)
+  function createCardObject(type, title, body) {
+    return {
+      title: title,
+      entry: body,
+      // notes left empty; stores will handle memory updates if enabled
+      notes: ''
+    };
+  }
+
+  // Public command: /card Type "Title" <details...>
+  // Suspends narrative and returns the pure card text. The runtime caller (modifier) should handle suspending output.
+  function handleCardCommand(commandText) {
+    // commandText starts with '/card'
+    var args = commandText.trim().split(/\s+/);
+    // minimal parse: /card Type "Title" rest
+    var m = commandText.match(/^\/card\s+(\S+)\s+"([^"]+)"\s*([\s\S]*)$/i);
+    if (!m) {
+      return { error: 'Usage: /card Type "Title" <details>' };
+    }
+    var type = m[1];
+    var title = m[2];
+    var details = (m[3]||'').trim();
+
+    var cfg = readMasterConfig();
+    if (!cfg.aetherheartCards) return { error: 'Card Creator disabled in Configure Aetherheart.' };
+
+    var tpl = loadTemplate(type);
+    // If no format lines are defined, default to simple Title + Details body
+    var body = '';
+    if (tpl.formatLines && tpl.formatLines.length) {
+      body = buildCardText(tpl.formatLines, title, details);
+    } else {
+      body = title + '\n\n' + details;
+    }
+
+    var cardObj = createCardObject(type, title, body);
+    // If master config says new cards perform memory updates, we can run inner-thought extraction against details
+    if (cfg.newCardsDoMemory && typeof extractAndStoreInnerSelf === 'function') {
+      // run extraction which will append to notes of the most recent marked card
+      extractAndStoreInnerSelf(details);
+    }
+
+    // Return an instruction-like object: card only, no narration
+    return { card: cardObj, suspended: true };
+  }
+
+  // Integrate into simple script modifier flow: intercept messages that start with /card
+  // Provide an onInput wrapper that can be used by scenarios: modifier(text) { if (isCard) return { cardOnly: true, card: ... } }
+  function onInput_cardCreator(text) {
+    if (!text) return { text: text };
+    if (text.trim().indexOf('/card') === 0) {
+      var res = handleCardCommand(text);
+      if (res.error) return { text: res.error };
+      if (res.card) {
+        // Return a special shaped object that the scenario can detect to suspend narration and show card
+        return { cardOnly: true, card: res.card };
+      }
+    }
+    return { text: text };
+  }
+
+  // Expose the modifier safely
+  if (typeof window !== 'undefined') {
+    window.onInput_cardCreator = window.onInput_cardCreator || onInput_cardCreator;
+  } else {
+    try { this.onInput_cardCreator = this.onInput_cardCreator || onInput_cardCreator; } catch (e) {}
+  }
+
+  // Patch into an existing onInput pipeline if present (safe non-destructive integration)
+  try {
+    if (typeof modifier === 'function' && modifier.__patched_for_card_creator !== true) {
+      var orig = modifier;
+      var patched = function(text){
+        // run card creator first
+        var res = onInput_cardCreator(text);
+        if (res && res.cardOnly) {
+          // some runtimes expect { text } so we return a serialized message indicating card-only
+          // We'll return a JSON flag that the scenario can interpret. If not supported, this simply becomes text.
+          return JSON.stringify({ __cardOnly: true, card: res.card });
+        }
+        // else continue original pipeline
+        return orig(text);
+      };
+      patched.__patched_for_card_creator = true;
+      // Replace global modifier if writable
+      try { modifier = patched; } catch (e) {}
+    }
+  } catch (e) {}
+
+  // USAGE NOTE (for maintainers):
+  // - Provide template story cards named exactly: 'TEMPLATE: Character', 'TEMPLATE: Location', etc.
+  // - Each template card must begin with two top-level fields: 'Rules:' then 'Format:' followed by the desired format lines.
+  // - Create a Configure Aetherheart card titled exactly 'CONFIGURE AETHERHEART' to control toggles (Aetherheart Cards: ON/OFF, Min turns cooldown: N, Auto-detect card type: ON/OFF, New cards do memory updates: ON/OFF).
 })();
