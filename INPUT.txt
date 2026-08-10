@@ -1,6 +1,28 @@
+// ===================================================================
+// AETHERHEART — INPUT
+// Paste this whole file into the "Input" script tab.
+// ===================================================================
+
+function onInput_Aetherheart(text) {
+  ahInit();
+  ahLoadConfig();
+
+  var t = text.toLowerCase();
+  var f = state.AH.flags;
+  var s = state.AH.settings;
+
+  f.rest = /\b(rest|sleep|camp)\b/.test(t);
+  f.refuel = s.fuel && /\b(refuel|fill up|recharge)\b/.test(t);
+  f.checkBounty = s.bountyBoard && /(check (the )?bounty board|look at (the )?wanted)/.test(t);
+  f.checkJob = s.jobBoard && /(check (the )?job board|look for work)/.test(t);
+  f.d20Roll = s.d20 ? ahRollD20(text) : null;
+
+  return text;
+}
+
 const modifier = (text) => {
   try {
-    if (typeof onInput_Aetherheart === "function") text = onInput_Aetherheart(text);
+    text = onInput_Aetherheart(text);
   } catch (e) {
     try { state.message = "AH Input: " + (e && e.message ? e.message : e); } catch (e2) {}
   }
