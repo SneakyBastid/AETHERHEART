@@ -1,1 +1,108 @@
+// INNER THOUGHTS (Inner Self compatible) — minimal patch
+// Behavior: extract {title: Name} blocks from player input, remove them from narration,
+// and store as single-line timestamped notes in state.aetherheart.innerSelfMemories only
+// if a story card exists whose first non-empty line contains the top marker {memories: ON}.
+// Does NOT write to card entries. Timestamp uses in-game time if available, else ISO.
 
+(function(){
+  // Helper: format in-game timestamp if present, else ISO UTC
+  function formatGameTimestamp() {
+    try {
+      var T = state && state.aetherheart && state.aetherheart.time;
+      if (!T) return (new Date()).toISOString();
+      var h = (T.hour % 12) || 12;
+      var ampm = (T.hour < 12) ? "AM" : "PM";
+      var mn = (T.minute < 10 ? "0" + T.minute : T.minute);
+      var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      var month = months[(T.month||1) - 1] || "Month";
+      return month + " " + (T.day||1) + ", Year " + (T.year||0) + " " + h + ":" + mn + " " + ampm + " (adv day " + (T.adventureDay||1) + ")";
+    } catch (e) { return (new Date()).toISOString(); }
+  }
+
+  // Find most recent story card whose first non-empty line matches markerRegex
+  function findMostRecentMarkedCard(markerRegex) {
+    if (!Array.isArray(storyCards)) return -1;
+    for (var i = storyCards.length - 1; i >= 0; i--) {
+      var entry = storyCards[i] && storyCards[i].entry;
+      if (!entry) continue;
+      var lines = entry.split(/\r?\n/);
+      var first = null;
+      for (var j = 0; j < lines.length; j++) {
+        if (lines[j].trim() !== "") { first = lines[j].trim(); break; }
+      }
+      if (!first) continue;
+      if (markerRegex.test(first)) return i;
+    }
+    return -1;
+  }
+
+  // Append memory object into state.aetherheart.innerSelfMemories
+  function appendMemoryToState(cardIndex, noteLine) {
+    state.aetherheart = state.aetherheart || {};
+    state.aetherheart.innerSelfMemories = state.aetherheart.innerSelfMemories || [];
+    var cardTitle = (storyCards && storyCards[cardIndex] && (storyCards[cardIndex].title || storyCards[cardIndex].keys)) || null;
+    state.aetherheart.innerSelfMemories.push({
+      cardIndex: cardIndex,
+      cardTitle: cardTitle,
+      note: noteLine,
+      savedAt: (new Date()).toISOString()
+    });
+  }
+
+  // Extract and store inner-self blocks from input text
+  function extractAndStoreInnerSelf(text) {
+    if (!text) return text;
+    // Regex: match blocks that start with {title: Name} then capture following lines until a blank line or end
+    var re = /(^|\n)\{\s*title\s*:\s*([^\}\n]+)\s*\}\s*\n([\s\S]*?)(?=\n\s*\n|$)/gi;
+    var matches = [];
+    var m;
+    while ((m = re.exec(text)) !== null) {
+      matches.push({ full: m[0], name: (m[2]||'').trim(), content: (m[3]||'').trim() });
+    }
+    if (!matches.length) return text;
+
+    // Marker: first non-empty line exactly like {memories: ON} (case-insensitive true/yes/on)
+    var markerRegex = /^\{\s*memories\s*:\s*(on|true|yes)\s*\}$/i;
+    var cardIdx = findMostRecentMarkedCard(markerRegex);
+
+    var cleaned = text;
+    matches.forEach(function(mm){
+      if (!mm.content) {
+        cleaned = cleaned.replace(mm.full, '\n');
+        return;
+      }
+      var contentSingle = mm.content.replace(/\s+/g, ' ').trim();
+      var ts = (state && state.aetherheart && state.aetherheart.time) ? formatGameTimestamp() : (new Date()).toISOString();
+      var noteLine = "{title: " + mm.name + "} " + ts + " — " + contentSingle;
+      if (cardIdx !== -1) {
+        appendMemoryToState(cardIdx, noteLine);
+      }
+      // Remove block entirely from player-visible text
+      cleaned = cleaned.replace(mm.full, '\n');
+    });
+    cleaned = cleaned.replace(/\n{2,}/g, '\n\n').trim();
+    return cleaned;
+  }
+
+  // Expose the function so it can be called from onInput. If an existing extractor exists, do NOT overwrite it.
+  if (typeof window !== 'undefined') {
+    window.extractAndStoreInnerSelf = window.extractAndStoreInnerSelf || extractAndStoreInnerSelf;
+  } else {
+    // In some library environments the global scope is different; attach to the global object if possible
+    try { this.extractAndStoreInnerSelf = this.extractAndStoreInnerSelf || extractAndStoreInnerSelf; } catch (e) {}
+  }
+
+  // If an onInput hook exists named onInput_AETHER_inner or similar, integrate safely
+  try {
+    if (typeof onInput_AETHER_inner === 'function' && onInput_AETHER_inner.__patched_for_innerself !== true) {
+      var original = onInput_AETHER_inner;
+      onInput_AETHER_inner = function(text){
+        text = extractAndStoreInnerSelf(text);
+        return original(text);
+      };
+      onInput_AETHER_inner.__patched_for_innerself = true;
+    }
+  } catch (e) {}
+
+  // USAGE: Call extractAndStoreInnerSelf(text) at the very start of your onInput handler.
+})();
