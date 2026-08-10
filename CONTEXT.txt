@@ -1,0 +1,26 @@
+// ===================================================================
+// AETHERHEART — CONTEXT
+// Paste this whole file into the "Context" script tab.
+// This is the piece that does what Realmheart does: it injects a
+// hidden, invisible-to-the-player world-state block into what the
+// AI actually sees, every turn, so the AI always knows the time,
+// date, weather, balance, and any calendar events without you
+// having to check or type anything.
+// ===================================================================
+
+function onContext_Aetherheart(text) {
+  ahInit();
+  ahLoadConfig();
+  var block = ahBuildWorldState();
+  return text + "\n\n" + block;
+}
+
+const modifier = (text) => {
+  try {
+    text = onContext_Aetherheart(text);
+  } catch (e) {
+    try { state.message = "AH Context: " + (e && e.message ? e.message : e); } catch (e2) {}
+  }
+  return { text };
+};
+modifier(text);
