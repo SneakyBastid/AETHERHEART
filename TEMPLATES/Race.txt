@@ -1,0 +1,11 @@
+Rules:
+
+Format:
+
+Notes:
+- Purpose: Template for Race cards used by the Card Creator.
+- Rules: and Format: intentionally blank so you can configure constraints and layout.
+- Rules: (leave blank) — Use to set limits (max length), required cultural notes, allowed fields, or other rules.
+- Format: (leave blank) — Use to define the lines for generated Race cards (e.g., Name:, Physical Traits:, Cultural Notes:, Abilities:).
+- Toggle behavior: Race card creation is enabled/disabled from the master Configure Aetherheart card; this template provides the content shape only.
+- Editing: Populate Rules/Format as needed; updates apply on the next turn.

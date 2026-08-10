@@ -1,0 +1,11 @@
+Rules:
+
+Format:
+
+Notes:
+- Purpose: Template for Location cards created by the Card Creator.
+- Leave Rules: and Format: empty here and fill them to customize generation behavior.
+- Rules: (leave blank) — Use to restrict description length, included fields (e.g., Atmosphere, Notable Features), or required content.
+- Format: (leave blank) — Define the exact lines/fields for generated Location cards (e.g., Name:, Description:, Atmosphere:, Notable Features:, Current State:).
+- Toggle behavior: The main Configure Aetherheart card controls whether Location auto-creation is active; this card only provides the template when creation is enabled.
+- Editing: Changes to Rules/Format take effect next turn.

@@ -1,0 +1,11 @@
+Rules:
+
+Format:
+
+Notes:
+- Purpose: This card defines the template used when the Card Creator (Card Forge) generates a new Character card.
+- Keep the Rules: and Format: fields intentionally empty so authors can fill them to control generation behavior.
+- Rules: (leave blank) — Use this field to specify constraints like max length, required sections, or stylistic rules.
+- Format: (leave blank) — Use this field to define the exact lines and order you want in generated Character cards (e.g. Name:, Appearance:, Personality:, Goals:, Secrets:, Current Mood:).
+- Toggle behavior: Enabling/disabling Character generation is controlled by the main Configure Aetherheart card ("Aetherheart Cards" / "Auto-detect card type" / "Card Creator" toggles). This template file does not itself toggle on/off; it only supplies the Rules and Format when active.
+- Editing: After you populate Rules: and Format:, changes apply on the next turn (same behavior as Realmheart-style config cards). Do not place runtime data here.

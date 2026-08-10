@@ -1,0 +1,11 @@
+Rules:
+
+Format:
+
+Notes:
+- Purpose: Generic template for "Other" card types when the Card Creator cannot clearly detect a specific type.
+- Rules: and Format: are left empty for you to define custom constraints and layout.
+- Rules: (leave blank) — Use for limits and required fields when generating miscellaneous cards.
+- Format: (leave blank) — Define the structure to be generated for Other cards (e.g., Name:, Description:, Relevance:).
+- Toggle behavior: Activation is controlled by the main Configure Aetherheart card; this template is consulted only when card creation is active and a type of "Other" is selected or detected.
+- Editing: Populate Rules/Format and changes apply next turn.
