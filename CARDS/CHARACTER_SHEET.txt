@@ -1,0 +1,25 @@
+== CHARACTER SHEET ==
+
+Level: 1
+XP: 0 / 100
+
+-- CORE STATS --
+STR 10   DEX 10   CON 10
+INT 10   WIS 10   CHA 10
+
+-- SKILLS --
+(none)
+
+-- PERKS --
+(none)
+
+-- POWERS --
+(none)
+
+[Commands]
+/sheet  - display character sheet
+/xp <amount> - grant XP (useful for testing)
+
+Notes:
+- Character progression is tracked under state.aetherheart.character.
+- Level-up rewards are simple defaults: a new power and +1 to a stat (round-robin).
