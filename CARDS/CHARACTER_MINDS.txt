@@ -1,1 +1,0 @@
-// REMOVED — per request. Do not recreate; use dead-code placeholder inside LIBRARY.txt instead.
