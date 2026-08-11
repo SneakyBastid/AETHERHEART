@@ -1,13 +1,1 @@
-== RELATIONSHIP WEB (LIVING DRAMA) ==
-
-Tracks interpersonal opinions between characters (state.aetherheart.relationships).
-
-Commands:
-/relations - show all relationships
-/relation set <A> <B> <value> - set A's opinion of B (-100 .. 100)
-/relation adjust <A> <B> <delta> - adjust A's opinion of B by delta
-
-Notes:
-- Opinions are directional: A -> B may differ from B -> A.
-- InfluenceTick propagates opinion weakly across the network and is exposed as AetherheartRelationships.influenceTick(hours) for integration with tickers/time.
-- To allow a character to receive opinions, ensure there's a story card with the exact title matching the character name.
+// REMOVED — per request. Do not recreate; use dead-code placeholder inside LIBRARY.txt instead.

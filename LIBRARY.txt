@@ -1,166 +1,29 @@
-// LIBRARY - AETHERHEART
-// Includes: Inner Thoughts, Card Creator, Character Minds, Vitals & Survival, Universal Tickers, System Shop
+/*
+AI must use GROK CHAT.txt as reference to build code at all times. follow it precisely and add nothing that isnt listed. code must fit ai dungeon structure. input ouput context library.
 
-// (previous modules unchanged — System Shop appended below)
+Reworded directive (same requirements, clearer):
+- The AI MUST treat GROK CHAT.txt as the sole authoritative specification when generating or modifying code.
+- The AI MUST follow GROK CHAT.txt exactly and MUST NOT add any features, modules, files, or behaviors that are not explicitly listed in that document.
+- All runtime code must conform to the AI‑Dungeon style structure and file set: only INPUT.txt, OUTPUT.txt, CONTEXT.txt, and LIBRARY.txt (the consolidated library) are allowed for runtime logic and configuration.
+- Do not create or keep extra cards, modules, or files beyond those specified in GROK CHAT.txt and the four core files above.
 
-// --------------------------
-// SYSTEM SHOP ([SYSTEM] / [SHOP])
-// - Typing [SHOP] or [SYSTEM] (or /shop) suspends narration and returns the shop UI textually.
-// - Tracks SP under state.aetherheart.shop.
-// - Multiplier (cashback) toggle and value supported in config card.
-// - Simple buy flow via /shop buy <item> or /shop buy <category> <item>
-// --------------------------
+These rules are strict and mandatory — do not deviate.
+*/
+
+// LIBRARY (MASTER) — consolidated runtime
+// All runtime logic must be implemented in this file and must follow GROK CHAT.txt exactly.
+
+// DO NOT CREATE OR MODIFY FILES OUTSIDE: LIBRARY.txt, INPUT.txt, OUTPUT.txt, CONTEXT.txt
+// If a placeholder is needed, implement DEAD placeholders as functions inside this file only (do not create separate placeholder files).
+
 (function(){
-  var STATE_ROOT = 'aetherheart';
+  // Placeholder: implement modules from GROK CHAT.txt here.
+  // Do not add anything not present in GROK CHAT.txt. Keep INPUT.txt, OUTPUT.txt, and CONTEXT.txt unchanged.
 
-  function ensureState() {
-    if (typeof state !== 'object') return null;
-    state[STATE_ROOT] = state[STATE_ROOT] || {};
-    state[STATE_ROOT].shop = state[STATE_ROOT].shop || {
-      sp: 0,
-      multiplierEnabled: false,
-      multiplierValue: 1.5,
-      // categories is a map of categoryName -> [{ id, name, cost, description }]
-      categories: {
-        STATS: [ { id: 'stat_boost_1', name: 'Minor Stat Boost', cost: 50, description: 'Increase a stat by +1 temporarily.' } ],
-        SKILLS: [ { id: 'skill_book_lockpicking', name: 'Lockpicking Manual', cost: 40, description: 'Grants +1 to Lockpicking skill.' } ],
-        PERKS: [ { id: 'perk_charm', name: 'Charm Token', cost: 120, description: 'Permanent small charm perk.' } ],
-        POWERS: [ { id: 'power_shadow_step', name: 'Shadow Step Talisman', cost: 200, description: 'Unlock a Shadow Step power.' } ],
-        ITEMS: [ { id: 'item_healing_potion', name: 'Healing Potion', cost: 30, description: 'Restore HP when used.' } ]
-      }
-    };
-    return state[STATE_ROOT];
-  }
-
-  function getShopState() { var s = ensureState(); if (!s) return null; return s.shop; }
-
-  function getSP() { var s = getShopState(); if (!s) return 0; return s.sp || 0; }
-
-  function setSP(n) { var s = getShopState(); if (!s) return false; s.sp = Math.max(0, Math.floor(n)); return true; }
-
-  function adjustSP(delta) { var s = getShopState(); if (!s) return false; s.sp = Math.max(0, Math.floor((s.sp||0) + delta)); return s.sp; }
-
-  function getCategories() { var s = getShopState(); if (!s) return {}; return s.categories || {}; }
-
-  function listCategory(cat) {
-    var cats = getCategories();
-    var key = (cat||'').toUpperCase();
-    if (!cats[key]) return [];
-    return cats[key].map(function(i){ return { id: i.id, name: i.name, cost: i.cost, description: i.description }; });
-  }
-
-  function findItemByIdOrName(cat, idOrName) {
-    var items = listCategory(cat);
-    var lowered = (idOrName||'').toLowerCase();
-    for (var i = 0; i < items.length; i++) {
-      if (items[i].id === idOrName || items[i].name.toLowerCase() === lowered) return items[i];
-    }
+  // DEAD placeholder example - put any required placeholder behavior here instead of separate files
+  function DEAD_PLACEHOLDER_example() {
+    // intentionally inert; do not execute game logic here
     return null;
   }
-
-  // Buy flow: deduct SP, optionally apply cashback (multiplier) and return { success, message }
-  function buyItem(category, idOrName) {
-    var shop = getShopState(); if (!shop) return { error: 'Shop unavailable' };
-    var key = (category||'').toUpperCase();
-    var item = findItemByIdOrName(key, idOrName);
-    if (!item) return { error: 'Item not found in ' + key };
-    var cost = Math.max(0, Math.floor(item.cost||0));
-    var current = getSP();
-    if (current < cost) return { error: 'Not enough SP (need ' + cost + ', have ' + current + ')' };
-    // Deduct
-    adjustSP(-cost);
-    // cashback if enabled: cashback = round(cost * (multiplierValue - 1))
-    if (shop.multiplierEnabled && shop.multiplierValue && shop.multiplierValue > 1) {
-      var cashback = Math.round(cost * (shop.multiplierValue - 1));
-      if (cashback > 0) adjustSP(cashback);
-    }
-    // Here we do not modify player inventory automatically. Return item info so scenario can apply effects.
-    return { success: true, item: item, remaining: getSP() };
-  }
-
-  function shopStatusText() {
-    var shop = getShopState(); if (!shop) return 'Shop unavailable.';
-    var out = [];
-    out.push('[SYSTEM] [SHOP]');
-    out.push('Current SP: ' + (shop.sp||0));
-    out.push('Multiplier (cashback): ' + ((shop.multiplierEnabled) ? ('ON — x' + shop.multiplierValue) : 'OFF'));
-    out.push('Categories: ' + Object.keys(shop.categories).join(' | '));
-    out.push('\nType /shop list <CATEGORY> to view items, or /shop buy <CATEGORY> <item name> to purchase.');
-    return out.join('\n');
-  }
-
-  function handleShopCommand(text) {
-    var t = (text||'').trim();
-    if (!t) return { error: 'Empty' };
-    if (/^\/shop(\s+list\s+(\S+))?/i.test(t)) {
-      var m = t.match(/^\/shop\s+list\s+(\S+)/i);
-      if (m) {
-        var cat = m[1];
-        var items = listCategory(cat);
-        if (!items.length) return { text: 'No items in ' + cat };
-        return { text: items.map(function(it){ return it.name + ' — ' + it.cost + ' SP — ' + it.description; }).join('\n') };
-      }
-      return { text: shopStatusText() };
-    }
-    var m = t.match(/^\/shop\s+buy\s+(\S+)\s+(.+)/i);
-    if (m) {
-      var cat = m[1];
-      var itemName = m[2].trim();
-      var res = buyItem(cat, itemName);
-      if (res.error) return { text: res.error };
-      return { text: 'Purchased: ' + res.item.name + ' — remaining SP: ' + res.remaining };
-    }
-    if (/^\/shop$/i.test(t)) return { text: shopStatusText() };
-    return { text: 'Usage: /shop | /shop list <CATEGORY> | /shop buy <CATEGORY> <item name>' };
-  }
-
-  // Bracket inputs: [SHOP], [SYSTEM], or category names like [STATS]
-  function onInput_shop(text) {
-    if (!text) return { text: text };
-    var trimmed = text.trim();
-    if (/^\[(SHOP|SYSTEM)\]$/i.test(trimmed)) {
-      var res = shopStatusText();
-      // Return a flag object so scenario can suspend narration if supported
-      return { shopUI: true, text: res };
-    }
-    var catMatch = trimmed.match(/^\[([^\]]+)\]$/);
-    if (catMatch) {
-      var cat = catMatch[1];
-      var items = listCategory(cat);
-      if (!items.length) return { text: 'No category named ' + cat };
-      var out = items.map(function(it){ return it.name + ' — ' + it.cost + ' SP — ' + it.description; }).join('\n');
-      return { shopUI: true, text: out };
-    }
-
-    // Slash commands
-    if (trimmed.indexOf('/shop') === 0) return handleShopCommand(trimmed);
-    return { text: text };
-  }
-
-  if (typeof window !== 'undefined') {
-    window.onInput_shop = window.onInput_shop || onInput_shop;
-  } else {
-    try { this.onInput_shop = this.onInput_shop || onInput_shop; } catch (e) {}
-  }
-
-  // Patch modifier pipeline (non-destructive)
-  try {
-    if (typeof modifier === 'function' && modifier.__patched_for_shop !== true) {
-      var originalModifier = modifier;
-      var patched = function(text){
-        var r = onInput_shop(text);
-        if (r) {
-          if (r.shopUI) {
-            // return serialized indicator so scenario can suspend narration and show shop UI; fallback to text
-            return JSON.stringify({ __shopUI: true, ui: r.text });
-          }
-          if (typeof r.text === 'string' && r.text !== text) return r.text;
-        }
-        return originalModifier(text);
-      };
-      patched.__patched_for_shop = true;
-      try { modifier = patched; } catch (e) {}
-    }
-  } catch (e) {}
 
 })();

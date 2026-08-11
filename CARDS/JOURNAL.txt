@@ -1,13 +1,1 @@
-== JOURNAL ==
-
-Last summary (turn 142): The pilgrimage route is closed. The captain offered passage if the party will carry a sealed letter to the abbey.
-Next auto-summary in: 3 turns
-
-Commands:
-/journal - show journal status
-/journal add <text> - add an entry
-/journal force-summary - force a summary immediately
-
-Notes:
-- Journal entries are stored under state.aetherheart.journal.entries as objects { time, text }.
-- Summaries are stored under state.aetherheart.journal.summaries. Auto-summary scheduling uses the card's 'autoSummaryTurns' value and must be integrated with your turn/ticker engine to trigger automatically.
+// REMOVED — per request. Do not recreate; use dead-code placeholder inside LIBRARY.txt instead.

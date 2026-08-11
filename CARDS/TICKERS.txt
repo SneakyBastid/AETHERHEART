@@ -1,13 +1,1 @@
-== UNIVERSAL TICKERS ==
-
-Madness (Lovecraft):  37%   interval: 4h   percentPerInterval: 5
-Ship Integrity:       82%   interval: 1d   percentPerInterval: 2
-Corruption:           12%   interval: 1w   percentPerInterval: 1
-
-[Add TICKER: Name | interval | percentPerInterval]
-Accepted intervals: 1m 5m 15m 1h 4h 8h 1d 3d 1w 1m 1y 2y
-
-Notes:
-- Tickers are tracked under state.aetherheart.tickers as objects: { name, value, interval, percentPerInterval }
-- Use /tickers to list current tickers and /tock <hours> to advance them for testing.
-- When a ticker reaches 100% you should handle the effect in your scenario (this library only signals which tickers finished during advance).
+// REMOVED — per request. Do not recreate; use dead-code placeholder inside LIBRARY.txt instead.

@@ -1,11 +1,1 @@
-Rules:
-
-Format:
-
-Notes:
-- Purpose: Template for Class/Faction cards produced by the Card Creator.
-- Leave Rules: and Format: empty here to be filled by the scenario author.
-- Rules: (leave blank) — Use to specify maximum length, mandatory fields, or formatting rules for classes/factions.
-- Format: (leave blank) — Define the exact structure (e.g., Name:, Role:, Beliefs:, Resources:).
-- Toggle behavior: Turn Class/Faction auto-generation on or off using the Configure Aetherheart card; this file only supplies the template.
-- Editing: Changes take effect next turn.
+// REMOVED — per request. Templates moved into LIBRARY.txt as dead-code placeholders when needed.
