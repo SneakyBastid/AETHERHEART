@@ -1,0 +1,171 @@
+// LIBRARY - AETHERHEART - RELATIONSHIP WEB (LIVING DRAMA)
+// Tracks interpersonal relationships between characters and their opinions/support/conflict.
+// - state.aetherheart.relationships.nodes: { name }
+// - state.aetherheart.relationships.edges: { from, to, opinion }  opinion: -100..100 (negative hostile, positive friendly)
+// - APIs: getOpinion, setOpinion, adjustOpinion, addNode, removeNode, listEdges, influenceTick
+// - Commands: /relations  | /relation set <A> <B> <value> | /relation adjust <A> <B> <delta>
+
+(function(){
+  var STATE_ROOT = 'aetherheart';
+
+  function ensureState() {
+    if (typeof state !== 'object') return null;
+    state[STATE_ROOT] = state[STATE_ROOT] || {};
+    state[STATE_ROOT].relationships = state[STATE_ROOT].relationships || { nodes: [], edges: [] };
+    return state[STATE_ROOT];
+  }
+
+  function findNode(name) {
+    var s = ensureState(); if (!s) return null;
+    return s.relationships.nodes.find(function(n){ return n.name === name; }) || null;
+  }
+
+  function addNode(name) {
+    if (!name) return false;
+    var s = ensureState(); if (!s) return false;
+    if (findNode(name)) return false; // already exists
+    s.relationships.nodes.push({ name: name });
+    return true;
+  }
+
+  function removeNode(name) {
+    var s = ensureState(); if (!s) return false;
+    var removed = false;
+    for (var i = s.relationships.nodes.length -1; i >=0; i--) { if (s.relationships.nodes[i].name === name) { s.relationships.nodes.splice(i,1); removed = true; } }
+    for (var j = s.relationships.edges.length -1; j>=0; j--) { if (s.relationships.edges[j].from === name || s.relationships.edges[j].to === name) { s.relationships.edges.splice(j,1); } }
+    return removed;
+  }
+
+  function normalizeOpinion(v) { var n = Math.max(-100, Math.min(100, Math.round(Number(v) || 0))); return n; }
+
+  function findEdge(a,b) {
+    var s = ensureState(); if (!s) return null;
+    return s.relationships.edges.find(function(e){ return e.from === a && e.to === b; }) || null;
+  }
+
+  function setOpinion(a,b,value) {
+    if (!a || !b) return { error: 'Invalid names' };
+    var s = ensureState(); if (!s) return { error: 'No state' };
+    if (!findNode(a)) addNode(a);
+    if (!findNode(b)) addNode(b);
+    var val = normalizeOpinion(value);
+    var edge = findEdge(a,b);
+    if (edge) { edge.opinion = val; } else { s.relationships.edges.push({ from: a, to: b, opinion: val }); }
+    return { from: a, to: b, opinion: val };
+  }
+
+  function adjustOpinion(a,b,delta) {
+    var current = getOpinion(a,b) || 0;
+    return setOpinion(a,b, normalizeOpinion(current + Number(delta||0)));
+  }
+
+  function getOpinion(a,b) {
+    var edge = findEdge(a,b);
+    return edge ? edge.opinion : 0;
+  }
+
+  function listEdges() {
+    var s = ensureState(); if (!s) return [];
+    return s.relationships.edges.map(function(e){ return { from: e.from, to: e.to, opinion: e.opinion }; });
+  }
+
+  // Influence tick: opinions propagate along connections weakly.
+  // rule: for each edge X->Y, if Y->Z strongly positive/negative, X->Z shifts slightly toward Y->Z times weight of X->Y
+  function influenceTick(hours) {
+    var s = ensureState(); if (!s) return [];
+    hours = Number(hours || 1);
+    var modified = [];
+    var edges = s.relationships.edges.slice(); // copy
+    edges.forEach(function(e){
+      // find outgoing edges from e.to
+      var outgoing = s.relationships.edges.filter(function(o){ return o.from === e.to; });
+      outgoing.forEach(function(o){
+        var sourceOpinion = e.opinion; // X->Y
+        var targetOpinion = o.opinion; // Y->Z
+        // influence factor depends on strength of X->Y and time; scale small
+        var influenceStrength = (Math.abs(sourceOpinion) / 100) * 0.05 * hours; // max 5% per hour
+        if (influenceStrength <= 0) return;
+        var change = (targetOpinion - getOpinion(e.from, o.to)) * influenceStrength;
+        if (Math.abs(change) < 0.1) return;
+        // apply
+        var before = getOpinion(e.from, o.to);
+        setOpinion(e.from, o.to, before + change);
+        modified.push({ from: e.from, to: o.to, old: before, now: getOpinion(e.from,o.to) });
+      });
+    });
+    return modified;
+  }
+
+  // Human-readable status
+  function relationsStatusText() {
+    var edges = listEdges();
+    if (!edges.length) return 'No relationships defined.';
+    return edges.map(function(e){
+      var tone = (e.opinion >= 50) ? 'ally' : (e.opinion <= -50) ? 'enemy' : 'neutral';
+      return e.from + ' -> ' + e.to + ': ' + e.opinion + ' (' + tone + ')';
+    }).join('\n');
+  }
+
+  // onInput handler for simple commands
+  function handleRelationsCommand(text) {
+    if (!text) return { text: text };
+    var t = text.trim();
+    if (t.indexOf('/relations') === 0 || t.indexOf('/relation') === 0) {
+      // /relation set A B 30
+      var mSet = t.match(/^\/relation\s+set\s+(\S+)\s+(\S+)\s+(-?\d+)/i);
+      if (mSet) {
+        var a = mSet[1], b = mSet[2], val = parseInt(mSet[3],10);
+        var res = setOpinion(a,b,val);
+        if (res.error) return { text: res.error };
+        return { text: 'Set opinion ' + a + '->' + b + ' = ' + res.opinion };
+      }
+      var mAdj = t.match(/^\/relation\s+adjust\s+(\S+)\s+(\S+)\s+(-?\d+)/i);
+      if (mAdj) {
+        var a2 = mAdj[1], b2 = mAdj[2], d = parseInt(mAdj[3],10);
+        var res2 = adjustOpinion(a2,b2,d);
+        if (res2.error) return { text: res2.error };
+        return { text: 'Adjusted opinion ' + a2 + '->' + b2 + ' to ' + res2.opinion };
+      }
+      return { text: relationsStatusText() };
+    }
+    return { text: text };
+  }
+
+  // Expose API
+  var Relationships = {
+    addNode: addNode,
+    removeNode: removeNode,
+    setOpinion: setOpinion,
+    adjustOpinion: adjustOpinion,
+    getOpinion: getOpinion,
+    list: listEdges,
+    influenceTick: influenceTick,
+    statusText: relationsStatusText
+  };
+
+  if (typeof window !== 'undefined') { window.AetherheartRelationships = window.AetherheartRelationships || Relationships; } else { try { this.AetherheartRelationships = this.AetherheartRelationships || Relationships; } catch (e) {} }
+
+  // integrate into modifier pipeline
+  function onInput_relations(text) {
+    if (!text) return { text: text };
+    var r = handleRelationsCommand(text);
+    if (r && typeof r.text === 'string' && r.text !== text) return { text: r.text };
+    return { text: text };
+  }
+
+  if (typeof window !== 'undefined') { window.onInput_relations = window.onInput_relations || onInput_relations; } else { try { this.onInput_relations = this.onInput_relations || onInput_relations; } catch (e) {} }
+
+  try {
+    if (typeof modifier === 'function' && modifier.__patched_for_relations !== true) {
+      var original = modifier;
+      var patched = function(text){
+        var r = onInput_relations(text);
+        if (r && typeof r.text === 'string' && r.text !== text) return r.text;
+        return original(text);
+      };
+      patched.__patched_for_relations = true;
+      try { modifier = patched; } catch (e) {}
+    }
+  } catch (e) {}
+
+})();
