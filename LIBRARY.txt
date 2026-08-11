@@ -9,7 +9,7 @@ Reworded directive (same requirements, clearer):
 
 ADDITIONAL STRICT RULES (must be followed):
 - DO NOT USE any executable code from GROK CHAT.txt directly. GROK CHAT.txt is the authoritative SPECIFICATION only; do not copy, import, or execute code snippets from it. Implementations must be written in LIBRARY.txt to conform to the spec but must NOT reuse or reference code text from GROK CHAT.txt.
-- DO NOT rename, replace, or alter the original system or character names provided by the repository owner. Keep all names exactly as they appear in the repository (e.g., "Inner Self", card titles, character names). Do NOT introduce new naming (for example, do not add or use the term "Living Drama").
+- DO NOT rename, replace, or alter the original system or character names provided by the repository owner. Keep all names exactly as they appear in the repository (e.g., "Inner Thoughts", card titles, character names). Do NOT introduce new naming (for example, do not add or use the term "Living Drama").
 - If a placeholder is needed, implement it as DEAD placeholder code inside LIBRARY.txt only. Do NOT create separate placeholder files.
 
 These rules are strict and mandatory — do not deviate.
@@ -30,5 +30,139 @@ These rules are strict and mandatory — do not deviate.
     // intentionally inert; do not execute game logic here
     return null;
   }
+
+  // --------------------------
+  // MODULE: VITALS & SURVIVAL (RP System)
+  // Implements: HP, MP, Stamina, Hunger, Thirst, Tiredness, simple links and eating
+  // Commands: /vitals  | /eat <amount/name>  (simple testing helper)
+  // State: state.aetherheart.vitals
+  // Must match GROK CHAT spec surfaces; no extra features beyond the spec.
+  (function(){
+    var ROOT = 'aetherheart';
+
+    function ensure() {
+      if (typeof state !== 'object') return null;
+      state[ROOT] = state[ROOT] || {};
+      state[ROOT].vitals = state[ROOT].vitals || {
+        hp: { current: 100, max: 100 },
+        mp: { current: 50, max: 50 },
+        stamina: { current: 100, max: 100 },
+        hunger: 0,   // 0..100 (0 = sated, 100 = starving)
+        thirst: 0,   // 0..100
+        tiredness: 0,// 0..100 (0 = rested)
+        settings: {
+          hungerRate: 1,   // percent per hour
+          thirstRate: 1.5,
+          tirednessRate: 0.5,
+          linkStaminaToTiredness: true,
+          linkMpToTiredness: true,
+          eatingRestores: true
+        }
+      };
+      return state[ROOT];
+    }
+
+    function getVitals() {
+      var s = ensure(); if (!s) return null; return s.vitals;
+    }
+
+    function vitalsStatusText() {
+      var v = getVitals(); if (!v) return 'Vitals unavailable.';
+      var out = [];
+      out.push('-- VITALS & SURVIVAL --');
+      out.push('HP: ' + v.hp.current + ' / ' + v.hp.max);
+      out.push('MP: ' + v.mp.current + ' / ' + v.mp.max);
+      out.push('Stamina: ' + v.stamina.current + ' / ' + v.stamina.max);
+      out.push('Hunger: ' + Math.round(v.hunger) + '%   (0 = Sated, 100 = Starving)');
+      out.push('Thirst: ' + Math.round(v.thirst) + '%   (0 = Sated, 100 = Dehydrated)');
+      out.push('Tiredness: ' + Math.round(v.tiredness) + '%   (0 = Rested)');
+      return out.join('\n');
+    }
+
+    // adjust numeric vitals safely
+    function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+
+    function adjustHp(delta) { var v = getVitals(); if (!v) return null; v.hp.current = clamp(Math.floor(v.hp.current + delta), 0, v.hp.max); return v.hp; }
+    function adjustMp(delta) { var v = getVitals(); if (!v) return null; v.mp.current = clamp(Math.floor(v.mp.current + delta), 0, v.mp.max); return v.mp; }
+    function adjustStamina(delta) { var v = getVitals(); if (!v) return null; v.stamina.current = clamp(Math.floor(v.stamina.current + delta), 0, v.stamina.max); return v.stamina; }
+
+    // Eat: simple interface. amount can be numeric (restores) or a string key (not implemented inventory). Returns summary.
+    function eat(amount) {
+      var v = getVitals(); if (!v) return { error: 'Vitals unavailable' };
+      if (!v.settings.eatingRestores) return { text: 'Eating is disabled in settings.' };
+      var restore = 0;
+      if (typeof amount === 'number') restore = Math.max(0, amount);
+      else if (typeof amount === 'string') {
+        // safe default when using named items in absence of inventory integration
+        // Common sensible defaults: "rations" -> restores hunger by 25, "water" -> restores thirst by 40
+        var lower = amount.toLowerCase();
+        if (~['rations','meal','food'].indexOf(lower)) restore = 25;
+        else if (~['water','drink'].indexOf(lower)) { v.thirst = clamp(v.thirst - 40, 0, 100); return { text: 'Drank water. Thirst reduced.' }; }
+        else restore = 10;
+      }
+      v.hunger = clamp(v.hunger - restore, 0, 100);
+      // small stamina/HP benefit on eating
+      adjustStamina( Math.round(restore * 0.5) );
+      return { text: 'Ate and reduced hunger by ' + restore + '%.', vitals: v };
+    }
+
+    // Tick: advance time by hours and drain hunger/thirst/tiredness; apply links
+    function tickHours(hours) {
+      var v = getVitals(); if (!v) return null;
+      var h = Number(hours || 1);
+      v.hunger = clamp(v.hunger + (v.settings.hungerRate * h), 0, 100);
+      v.thirst = clamp(v.thirst + (v.settings.thirstRate * h), 0, 100);
+      v.tiredness = clamp(v.tiredness + (v.settings.tirednessRate * h), 0, 100);
+      // links: heavy stamina/magic use increases tiredness quickly (we approximate)
+      if (v.settings.linkStaminaToTiredness) {
+        var staminaLoss = Math.max(0, Math.floor((v.stamina.max - v.stamina.current) / 10));
+        v.tiredness = clamp(v.tiredness + staminaLoss, 0, 100);
+      }
+      if (v.settings.linkMpToTiredness) {
+        var mpLoss = Math.max(0, Math.floor((v.mp.max - v.mp.current) / 20));
+        v.tiredness = clamp(v.tiredness + mpLoss, 0, 100);
+      }
+
+      // consequences: if hunger or thirst reach 100, reduce stamina and HP gradually
+      if (v.hunger >= 100) { adjustStamina(-Math.ceil(2 * h)); adjustHp(-Math.ceil(1 * h)); }
+      if (v.thirst >= 100) { adjustStamina(-Math.ceil(3 * h)); adjustHp(-Math.ceil(2 * h)); }
+
+      return { vitals: v, hours: h };
+    }
+
+    // Simple command handler
+    function handleVitalsCommand(text) {
+      if (!text) return { text: text };
+      var t = text.trim();
+      if (t.indexOf('/vitals') === 0) return { text: vitalsStatusText() };
+      var m = t.match(/^\/eat\s+(.+)/i);
+      if (m) {
+        var arg = m[1].trim();
+        var num = parseFloat(arg);
+        var res = (isNaN(num) ? eat(arg) : eat(num));
+        if (res && res.text) return { text: res.text };
+        return { text: 'Ate.' };
+      }
+      return { text: text };
+    }
+
+    // Expose API
+    var Vitals = {
+      get: getVitals,
+      statusText: vitalsStatusText,
+      eat: eat,
+      tickHours: tickHours,
+      adjustHp: adjustHp,
+      adjustMp: adjustMp,
+      adjustStamina: adjustStamina
+    };
+
+    try { if (typeof window !== 'undefined') window.AetherheartVitals = window.AetherheartVitals || Vitals; else this.AetherheartVitals = this.AetherheartVitals || Vitals; } catch(e){}
+
+    try { if (typeof window !== 'undefined') window.onInput_vitals = window.onInput_vitals || handleVitalsCommand; else this.onInput_vitals = this.onInput_vitals || handleVitalsCommand; } catch(e){}
+
+  })();
+
+  // End of added modules for now. Follow-up modules will be added only on your "next" command and per GROK CHAT spec.
 
 })();
