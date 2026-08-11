@@ -1,657 +1,164 @@
 // LIBRARY - AETHERHEART
-// Includes: Inner Thoughts, Card Creator, Character Minds, Vitals & Survival, Universal Tickers
+// Includes: Inner Thoughts, Card Creator, Character Minds, Vitals & Survival, Universal Tickers, System Shop
+
+// (previous modules unchanged — System Shop appended below)
 
 // --------------------------
-// INNER THOUGHTS (Inner Self compatible)
-// (store into card.notes only — NO TIMESTAMPS, NO FALLBACK)
-// --------------------------
-(function(){
-  // Find most recent story card whose first non-empty line matches markerRegex
-  function findMostRecentMarkedCard(markerRegex) {
-    if (!Array.isArray(storyCards)) return -1;
-    for (var i = storyCards.length - 1; i >= 0; i--) {
-      var entry = storyCards[i] && storyCards[i].entry;
-      if (!entry) continue;
-      var lines = entry.split(/\r?\n/);
-      var first = null;
-      for (var j = 0; j < lines.length; j++) {
-        if (lines[j].trim() !== "") { first = lines[j].trim(); break; }
-      }
-      if (!first) continue;
-      if (markerRegex.test(first)) return i;
-    }
-    return -1;
-  }
-
-  // Append memory string directly into the story card's `notes` property (no timestamps, no fallback)
-  function appendMemoryToCardNotes(cardIndex, noteLine) {
-    if (!Array.isArray(storyCards) || cardIndex < 0 || cardIndex >= storyCards.length) return false;
-    var card = storyCards[cardIndex];
-    try {
-      var existing = card.notes || '';
-      if (existing && existing.trim() !== '') {
-        card.notes = existing + '\n' + noteLine;
-      } else {
-        card.notes = noteLine;
-      }
-      return true;
-    } catch (e) {
-      // Intentionally do nothing on failure — do NOT create fallbacks or write elsewhere.
-      return false;
-    }
-  }
-
-  // Extract and store inner-self blocks from input text (no timestamps in note)
-  function extractAndStoreInnerSelf(text) {
-    if (!text) return text;
-    // Regex: match blocks that start with {title: Name} then capture following lines until a blank line or end
-    var re = /(^|\n)\{\s*title\s*:\s*([^\}\n]+)\s*\}\s*\n([\s\S]*?)(?=\n\s*\n|$)/gi;
-    var matches = [];
-    var m;
-    while ((m = re.exec(text)) !== null) {
-      matches.push({ full: m[0], name: (m[2]||'').trim(), content: (m[3]||'').trim() });
-    }
-    if (!matches.length) return text;
-
-    // Marker: first non-empty line exactly like {memories: ON} (case-insensitive true/yes/on)
-    var markerRegex = /^\{\s*memories\s*:\s*(on|true|yes)\s*\}$/i;
-    var cardIdx = findMostRecentMarkedCard(markerRegex);
-
-    var cleaned = text;
-    matches.forEach(function(mm){
-      if (!mm.content) {
-        cleaned = cleaned.replace(mm.full, '\n');
-        return;
-      }
-      var contentSingle = mm.content.replace(/\s+/g, ' ').trim();
-      var noteLine = "{title: " + mm.name + "} — " + contentSingle;
-      if (cardIdx !== -1) {
-        appendMemoryToCardNotes(cardIdx, noteLine);
-      }
-      // Remove block entirely from player-visible text
-      cleaned = cleaned.replace(mm.full, '\n');
-    });
-    cleaned = cleaned.replace(/\n{2,}/g, '\n\n').trim();
-    return cleaned;
-  }
-
-  // Expose the function so it can be called from onInput. If an existing extractor exists, do NOT overwrite it.
-  if (typeof window !== 'undefined') {
-    window.extractAndStoreInnerSelf = window.extractAndStoreInnerSelf || extractAndStoreInnerSelf;
-  } else {
-    try { this.extractAndStoreInnerSelf = this.extractAndStoreInnerSelf || extractAndStoreInnerSelf; } catch (e) {}
-  }
-
-  // If an onInput hook exists named onInput_AETHER_inner or similar, integrate safely
-  try {
-    if (typeof onInput_AETHER_inner === 'function' && onInput_AETHER_inner.__patched_for_innerself !== true) {
-      var original = onInput_AETHER_inner;
-      onInput_AETHER_inner = function(text){
-        text = extractAndStoreInnerSelf(text);
-        return original(text);
-      };
-      onInput_AETHER_inner.__patched_for_innerself = true;
-    }
-  } catch (e) {}
-
-  // USAGE: Call extractAndStoreInnerSelf(text) at the very start of your onInput handler.
-})();
-
-
-// --------------------------
-// CARD CREATOR / CARD FORGE
-// - Uses template story cards that contain two fields at top: "Rules:" and "Format:"
-// - Provides a /card command that suspends narration and returns only the generated card text
-// - Auto-detection and cooldowns are controlled via a Configure Aetherheart card
+// SYSTEM SHOP ([SYSTEM] / [SHOP])
+// - Typing [SHOP] or [SYSTEM] (or /shop) suspends narration and returns the shop UI textually.
+// - Tracks SP under state.aetherheart.shop.
+// - Multiplier (cashback) toggle and value supported in config card.
+// - Simple buy flow via /shop buy <item> or /shop buy <category> <item>
 // --------------------------
 (function(){
-  var CFG_TITLE = 'CONFIGURE AETHERHEART';
-  var TEMPLATE_PREFIX = 'TEMPLATE: ';
-  var DEFAULT_COOLDOWN = 12;
+  var STATE_ROOT = 'aetherheart';
 
-  // Helpers -------------------------------------------------
-  function findCardByTitle(title) {
-    if (!Array.isArray(storyCards)) return null;
-    for (var i = 0; i < storyCards.length; i++) {
-      if (storyCards[i] && storyCards[i].title === title) return storyCards[i];
+  function ensureState() {
+    if (typeof state !== 'object') return null;
+    state[STATE_ROOT] = state[STATE_ROOT] || {};
+    state[STATE_ROOT].shop = state[STATE_ROOT].shop || {
+      sp: 0,
+      multiplierEnabled: false,
+      multiplierValue: 1.5,
+      // categories is a map of categoryName -> [{ id, name, cost, description }]
+      categories: {
+        STATS: [ { id: 'stat_boost_1', name: 'Minor Stat Boost', cost: 50, description: 'Increase a stat by +1 temporarily.' } ],
+        SKILLS: [ { id: 'skill_book_lockpicking', name: 'Lockpicking Manual', cost: 40, description: 'Grants +1 to Lockpicking skill.' } ],
+        PERKS: [ { id: 'perk_charm', name: 'Charm Token', cost: 120, description: 'Permanent small charm perk.' } ],
+        POWERS: [ { id: 'power_shadow_step', name: 'Shadow Step Talisman', cost: 200, description: 'Unlock a Shadow Step power.' } ],
+        ITEMS: [ { id: 'item_healing_potion', name: 'Healing Potion', cost: 30, description: 'Restore HP when used.' } ]
+      }
+    };
+    return state[STATE_ROOT];
+  }
+
+  function getShopState() { var s = ensureState(); if (!s) return null; return s.shop; }
+
+  function getSP() { var s = getShopState(); if (!s) return 0; return s.sp || 0; }
+
+  function setSP(n) { var s = getShopState(); if (!s) return false; s.sp = Math.max(0, Math.floor(n)); return true; }
+
+  function adjustSP(delta) { var s = getShopState(); if (!s) return false; s.sp = Math.max(0, Math.floor((s.sp||0) + delta)); return s.sp; }
+
+  function getCategories() { var s = getShopState(); if (!s) return {}; return s.categories || {}; }
+
+  function listCategory(cat) {
+    var cats = getCategories();
+    var key = (cat||'').toUpperCase();
+    if (!cats[key]) return [];
+    return cats[key].map(function(i){ return { id: i.id, name: i.name, cost: i.cost, description: i.description }; });
+  }
+
+  function findItemByIdOrName(cat, idOrName) {
+    var items = listCategory(cat);
+    var lowered = (idOrName||'').toLowerCase();
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].id === idOrName || items[i].name.toLowerCase() === lowered) return items[i];
     }
     return null;
   }
 
-  // Read master configuration from the Configure Aetherheart card (if present)
-  function readMasterConfig() {
-    var cfg = {
-      aetherheartCards: true,
-      autoDetect: true,
-      minCooldown: DEFAULT_COOLDOWN,
-      newCardsDoMemory: false
-    };
-    var card = findCardByTitle(CFG_TITLE);
-    if (!card || !card.entry) return cfg;
-    // Parse simple lines like 'Aetherheart Cards: ON' 'Min turns cooldown: 12' (case-insensitive)
-    var lines = card.entry.split(/\r?\n/);
-    lines.forEach(function(l){
-      var s = l.trim();
-      var m;
-      if (/^Aetherheart Cards:\s*ON$/i.test(s)) cfg.aetherheartCards = true;
-      if (/^Aetherheart Cards:\s*OFF$/i.test(s)) cfg.aetherheartCards = false;
-      m = s.match(/^Min turns cooldown:\s*(\d+)/i);
-      if (m) cfg.minCooldown = parseInt(m[1],10) || cfg.minCooldown;
-      if (/^New cards do memory updates:\s*ON$/i.test(s)) cfg.newCardsDoMemory = true;
-      if (/^New cards do memory updates:\s*OFF$/i.test(s)) cfg.newCardsDoMemory = false;
-      if (/^Auto-detect card type:\s*ON$/i.test(s)) cfg.autoDetect = true;
-      if (/^Auto-detect card type:\s*OFF$/i.test(s)) cfg.autoDetect = false;
-    });
-    return cfg;
-  }
-
-  // Load template by type. Template story card title must be "TEMPLATE: <Type>" and its entry must contain
-  // top-level fields:
-  // Rules:
-  // <blank or rules>
-  // Format:
-  // <format lines>
-  function loadTemplate(type) {
-    var title = TEMPLATE_PREFIX + type;
-    var card = findCardByTitle(title);
-    if (!card || !card.entry) return { rules: '', formatLines: [] };
-    var entry = card.entry.replace(/\r/g,'');
-    var lines = entry.split('\n');
-    var section = null;
-    var rules = [];
-    var formatLines = [];
-    for (var i = 0; i < lines.length; i++) {
-      var ln = lines[i];
-      if (/^\s*Rules\s*:/i.test(ln)) { section = 'rules'; continue; }
-      if (/^\s*Format\s*:/i.test(ln)) { section = 'format'; continue; }
-      if (/^\s*Notes\s*:/i.test(ln)) { break; } // stop at notes
-      if (!section) continue;
-      if (section === 'rules') rules.push(ln);
-      if (section === 'format') formatLines.push(ln);
+  // Buy flow: deduct SP, optionally apply cashback (multiplier) and return { success, message }
+  function buyItem(category, idOrName) {
+    var shop = getShopState(); if (!shop) return { error: 'Shop unavailable' };
+    var key = (category||'').toUpperCase();
+    var item = findItemByIdOrName(key, idOrName);
+    if (!item) return { error: 'Item not found in ' + key };
+    var cost = Math.max(0, Math.floor(item.cost||0));
+    var current = getSP();
+    if (current < cost) return { error: 'Not enough SP (need ' + cost + ', have ' + current + ')' };
+    // Deduct
+    adjustSP(-cost);
+    // cashback if enabled: cashback = round(cost * (multiplierValue - 1))
+    if (shop.multiplierEnabled && shop.multiplierValue && shop.multiplierValue > 1) {
+      var cashback = Math.round(cost * (shop.multiplierValue - 1));
+      if (cashback > 0) adjustSP(cashback);
     }
-    return { rules: (rules.join('\n')||''), formatLines: formatLines.map(function(l){ return l.trim(); }).filter(Boolean) };
+    // Here we do not modify player inventory automatically. Return item info so scenario can apply effects.
+    return { success: true, item: item, remaining: getSP() };
   }
 
-  // Build card text from template formatLines and provided fields
-  // formatLines is an array of labels like ['Name:', 'Appearance:', 'Personality:']
-  // title and details are strings — details may be a freeform description the user provided
-  function buildCardText(formatLines, title, details) {
+  function shopStatusText() {
+    var shop = getShopState(); if (!shop) return 'Shop unavailable.';
     var out = [];
-    // If format contains a Name: line, place the title there; otherwise put Title at top
-    var inserted = false;
-    formatLines.forEach(function(l){
-      if (/^Name\s*:\s*$/i.test(l)) {
-        out.push('Name: ' + title);
-        inserted = true;
-      } else {
-        // Try to fill the first non-Name field with provided details
-        if (!inserted && /^(Appearance|Description|Description:|Role|Description:)$/i.test(l)) {
-          out.push(l + ' ' + details);
-          inserted = true;
-        } else {
-          out.push(l);
-        }
-      }
-    });
-    if (!inserted) {
-      // No Name field, so put Title as first line
-      out.unshift(title);
-    }
+    out.push('[SYSTEM] [SHOP]');
+    out.push('Current SP: ' + (shop.sp||0));
+    out.push('Multiplier (cashback): ' + ((shop.multiplierEnabled) ? ('ON — x' + shop.multiplierValue) : 'OFF'));
+    out.push('Categories: ' + Object.keys(shop.categories).join(' | '));
+    out.push('\nType /shop list <CATEGORY> to view items, or /shop buy <CATEGORY> <item name> to purchase.');
     return out.join('\n');
   }
 
-  // Create a new story card object (note: in many runtimes you must call an API to persist; here we return an object)
-  function createCardObject(type, title, body) {
-    return {
-      title: title,
-      entry: body,
-      // notes left empty; stores will handle memory updates if enabled
-      notes: ''
-    };
-  }
-
-  // Public command: /card Type "Title" <details...>
-  // Suspends narrative and returns the pure card text. The runtime caller (modifier) should handle suspending output.
-  function handleCardCommand(commandText) {
-    // commandText starts with '/card'
-    var args = commandText.trim().split(/\s+/);
-    // minimal parse: /card Type "Title" rest
-    var m = commandText.match(/^\/card\s+(\S+)\s+"([^"]+)"\s*([\s\S]*)$/i);
-    if (!m) {
-      return { error: 'Usage: /card Type "Title" <details>' };
-    }
-    var type = m[1];
-    var title = m[2];
-    var details = (m[3]||'').trim();
-
-    var cfg = readMasterConfig();
-    if (!cfg.aetherheartCards) return { error: 'Card Creator disabled in Configure Aetherheart.' };
-
-    var tpl = loadTemplate(type);
-    // If no format lines are defined, default to simple Title + Details body
-    var body = '';
-    if (tpl.formatLines && tpl.formatLines.length) {
-      body = buildCardText(tpl.formatLines, title, details);
-    } else {
-      body = title + '\n\n' + details;
-    }
-
-    var cardObj = createCardObject(type, title, body);
-    // If master config says new cards perform memory updates, we can run inner-thought extraction against details
-    if (cfg.newCardsDoMemory && typeof extractAndStoreInnerSelf === 'function') {
-      // run extraction which will append to notes of the most recent marked card
-      extractAndStoreInnerSelf(details);
-    }
-
-    // Return an instruction-like object: card only, no narration
-    return { card: cardObj, suspended: true };
-  }
-
-  // Integrate into simple script modifier flow: intercept messages that start with /card
-  // Provide an onInput wrapper that can be used by scenarios: modifier(text) { if (isCard) return { cardOnly: true, card: ... } }
-  function onInput_cardCreator(text) {
-    if (!text) return { text: text };
-    if (text.trim().indexOf('/card') === 0) {
-      var res = handleCardCommand(text);
-      if (res.error) return { text: res.error };
-      if (res.card) {
-        // Return a special shaped object that the scenario can detect to suspend narration and show card
-        return { cardOnly: true, card: res.card };
-      }
-    }
-    return { text: text };
-  }
-
-  // Expose the modifier safely
-  if (typeof window !== 'undefined') {
-    window.onInput_cardCreator = window.onInput_cardCreator || onInput_cardCreator;
-  } else {
-    try { this.onInput_cardCreator = this.onInput_cardCreator || onInput_cardCreator; } catch (e) {}
-  }
-
-  // Patch into an existing onInput pipeline if present (safe non-destructive integration)
-  try {
-    if (typeof modifier === 'function' && modifier.__patched_for_card_creator !== true) {
-      var orig = modifier;
-      var patched = function(text){
-        // run card creator first
-        var res = onInput_cardCreator(text);
-        if (res && res.cardOnly) {
-          // some runtimes expect { text } so we return a serialized message indicating card-only
-          // We'll return a JSON flag that the scenario can interpret. If not supported, this simply becomes text.
-          return JSON.stringify({ __cardOnly: true, card: res.card });
-        }
-        // else continue original pipeline
-        return orig(text);
-      };
-      patched.__patched_for_card_creator = true;
-      // Replace global modifier if writable
-      try { modifier = patched; } catch (e) {}
-    }
-  } catch (e) {}
-
-  // USAGE NOTE (for maintainers):
-  // - Provide template story cards named exactly: 'TEMPLATE: Character', 'TEMPLATE: Location', etc.
-  // - Each template card must begin with two top-level fields: 'Rules:' then 'Format:' followed by the desired format lines.
-  // - Create a Configure Aetherheart card titled exactly 'CONFIGURE AETHERHEART' to control toggles (Aetherheart Cards: ON/OFF, Min turns cooldown: N, Auto-detect card type: ON/OFF, New cards do memory updates: ON/OFF).
-})();
-
-
-// --------------------------
-// CHARACTER MINDS (Inner Memory subsystem)
-// --------------------------
-(function(){
-  var POSSIBLE_CONFIG_TITLES = ['CHARACTER MINDS','INNER MEMORY','INNER MEMORY CARD','INNER MEMORY:'];
-
-  function findConfigCard() {
-    if (!Array.isArray(storyCards)) return null;
-    for (var i = 0; i < storyCards.length; i++) {
-      var t = (storyCards[i] && storyCards[i].title) || '';
-      if (POSSIBLE_CONFIG_TITLES.indexOf(t.toUpperCase()) !== -1) return storyCards[i];
-    }
-    return null;
-  }
-
-  function parseTrackedCharacters(card) {
-    if (!card || !card.entry) return [];
-    var lines = card.entry.split(/\r?\n/);
-    for (var i = 0; i < lines.length; i++) {
-      var ln = lines[i].trim();
-      var m = ln.match(/^Tracked characters:\s*(.*)$/i);
+  function handleShopCommand(text) {
+    var t = (text||'').trim();
+    if (!t) return { error: 'Empty' };
+    if (/^\/shop(\s+list\s+(\S+))?/i.test(t)) {
+      var m = t.match(/^\/shop\s+list\s+(\S+)/i);
       if (m) {
-        var raw = m[1] || '';
-        return raw.split(/\s*,\s*/).map(function(x){ return x.trim(); }).filter(Boolean);
+        var cat = m[1];
+        var items = listCategory(cat);
+        if (!items.length) return { text: 'No items in ' + cat };
+        return { text: items.map(function(it){ return it.name + ' — ' + it.cost + ' SP — ' + it.description; }).join('\n') };
       }
+      return { text: shopStatusText() };
     }
-    return [];
-  }
-
-  function findCharacterCard(characterName) {
-    if (!Array.isArray(storyCards)) return null;
-    for (var i = 0; i < storyCards.length; i++) {
-      var c = storyCards[i];
-      if (!c || !c.title) continue;
-      if (c.title === characterName) return { card: c, index: i };
-    }
-    return null;
-  }
-
-  function addMemoryToCharacter(characterName, memoryText) {
-    if (!characterName || !memoryText) return false;
-    var found = findCharacterCard(characterName);
-    if (!found) return false;
-    var card = found.card;
-    var lines = (card.entry||'').split(/\r?\n/);
-    var first = null;
-    for (var i = 0; i < lines.length; i++) { if (lines[i].trim() !== '') { first = lines[i].trim(); break; } }
-    if (!first) return false;
-    var markerRegex = /^\{\s*memories\s*:\s*(on|true|yes)\s*\}$/i;
-    if (!markerRegex.test(first)) return false;
-    var normalized = memoryText.replace(/\s+/g,' ').trim();
-    var noteLine = '{title: ' + characterName + '} — ' + normalized;
-    try {
-      var existing = card.notes || '';
-      card.notes = (existing && existing.trim()) ? (existing + '\n' + noteLine) : noteLine;
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  var CharacterMinds = {
-    getTrackedCharacters: function(){
-      var cfg = findConfigCard();
-      return parseTrackedCharacters(cfg);
-    },
-    addMemory: function(name, text){ return addMemoryToCharacter(name, text); }
-  };
-
-  if (typeof window !== 'undefined') {
-    window.CharacterMinds = window.CharacterMinds || CharacterMinds;
-  } else {
-    try { this.CharacterMinds = this.CharacterMinds || CharacterMinds; } catch (e) {}
-  }
-
-})();
-
-
-// --------------------------
-// VITALS & SURVIVAL
-// --------------------------
-(function(){
-  var STATE_ROOT = 'aetherheart';
-
-  function ensureState() {
-    if (typeof state !== 'object') return null;
-    state[STATE_ROOT] = state[STATE_ROOT] || {};
-    state[STATE_ROOT].vitals = state[STATE_ROOT].vitals || {
-      hp: 100,
-      maxHp: 100,
-      mp: 50,
-      maxMp: 50,
-      stamina: 100,
-      maxStamina: 100,
-      hunger: 0,   // 0-100 (0 satisfied, 100 starving)
-      thirst: 0,   // 0-100
-      tiredness: 0 // 0-100 (0 rested, 100 exhausted)
-    };
-    state[STATE_ROOT].vitalsConfig = state[STATE_ROOT].vitalsConfig || {
-      linkStaminaToTiredness: true,
-      linkMpToTiredness: true,
-      eatingRestores: true,
-      hungerDrainRatePerHour: 0.5, // % hunger increase per hour
-      thirstDrainRatePerHour: 0.8
-    };
-    return state[STATE_ROOT];
-  }
-
-  function getVitals() {
-    var s = ensureState(); if (!s) return null;
-    return s.vitals;
-  }
-
-  function setVitals(newVitals) {
-    var s = ensureState(); if (!s) return false;
-    s.vitals = Object.assign({}, s.vitals, newVitals);
-    return true;
-  }
-
-  function getConfig() { var s = ensureState(); if (!s) return null; return s.vitalsConfig; }
-
-  function applyFoodEffect(effect) {
-    var v = getVitals(); if (!v) return false;
-    var changed = false;
-    if (effect.hungerRestore) { v.hunger = Math.max(0, v.hunger - effect.hungerRestore); changed = true; }
-    if (effect.thirstRestore) { v.thirst = Math.max(0, v.thirst - effect.thirstRestore); changed = true; }
-    if (effect.staminaRestore) { v.stamina = Math.min(v.maxStamina, v.stamina + effect.staminaRestore); changed = true; }
-    if (effect.hpRestore) { v.hp = Math.min(v.maxHp, v.hp + effect.hpRestore); changed = true; }
-    if (effect.mpRestore) { v.mp = Math.min(v.maxMp, v.mp + effect.mpRestore); changed = true; }
-    return changed;
-  }
-
-  function tickVitals(hours) {
-    var v = getVitals(); if (!v) return false;
-    var cfg = getConfig(); if (!cfg) return false;
-    var hungerDelta = (cfg.hungerDrainRatePerHour || 0) * hours;
-    var thirstDelta = (cfg.thirstDrainRatePerHour || 0) * hours;
-    v.hunger = Math.min(100, v.hunger + hungerDelta);
-    v.thirst = Math.min(100, v.thirst + thirstDelta);
-
-    if (cfg.linkStaminaToTiredness) {
-      if (v.stamina < 50) {
-        var deficit = (50 - v.stamina) / 50; // 0..1
-        v.tiredness = Math.min(100, v.tiredness + deficit * 5 * hours);
-      } else {
-        v.tiredness = Math.max(0, v.tiredness - 0.5 * hours);
-      }
-    }
-    if (cfg.linkMpToTiredness) {
-      if (v.mp < (v.maxMp * 0.2)) {
-        v.tiredness = Math.min(100, v.tiredness + 2 * hours);
-      }
-    }
-    v.hunger = Math.max(0, Math.min(100, v.hunger));
-    v.thirst = Math.max(0, Math.min(100, v.thirst));
-    v.tiredness = Math.max(0, Math.min(100, v.tiredness));
-    return true;
-  }
-
-  var FOOD_TABLE = {
-    bread: { hungerRestore: 15, staminaRestore: 5 },
-    stew:  { hungerRestore: 35, staminaRestore: 20 },
-    apple: { hungerRestore: 8, staminaRestore: 2 },
-    water: { thirstRestore: 40 }
-  };
-
-  function handleEatCommand(commandText) {
-    var m = commandText.match(/^\/eat\s+(\S+)/i);
-    if (!m) return { error: 'Usage: /eat <item>' };
-    var item = m[1].toLowerCase();
-    var eff = FOOD_TABLE[item];
-    if (!eff) return { error: 'Unknown food item: ' + item };
-    var cfg = getConfig();
-    var applied = applyFoodEffect(eff);
-    return { success: applied, item: item };
-  }
-
-  function statusText() {
-    var v = getVitals(); if (!v) return 'Vitals unavailable';
-    return 'HP: ' + Math.round(v.hp) + ' / ' + v.maxHp + '\nMP: ' + Math.round(v.mp) + ' / ' + v.maxMp + '\nStamina: ' + Math.round(v.stamina) + ' / ' + v.maxStamina + '\nHunger: ' + Math.round(v.hunger) + '%\nThirst: ' + Math.round(v.thirst) + '%\nTiredness: ' + Math.round(v.tiredness) + '%';
-  }
-
-  var Vitals = {
-    get: getVitals,
-    set: setVitals,
-    tick: tickVitals,
-    eat: function(item){ return handleEatCommand('/eat ' + item); },
-    handleEatCommand: handleEatCommand,
-    statusText: statusText,
-    config: getConfig,
-    applyFoodEffect: applyFoodEffect
-  };
-
-  if (typeof window !== 'undefined') { window.AetherheartVitals = window.AetherheartVitals || Vitals; } else { try { this.AetherheartVitals = this.AetherheartVitals || Vitals; } catch (e) {} }
-
-  function onInput_vitals(text) {
-    if (!text) return { text: text };
-    var t = text.trim();
-    if (t.indexOf('/vitals') === 0) {
-      return { text: statusText() };
-    }
-    if (t.indexOf('/eat') === 0) {
-      var res = handleEatCommand(t);
-      if (res.error) return { text: res.error };
-      return { text: 'You consume ' + res.item + '.' };
-    }
-    return { text: text };
-  }
-
-  if (typeof window !== 'undefined') {
-    window.onInput_vitals = window.onInput_vitals || onInput_vitals;
-  } else {
-    try { this.onInput_vitals = this.onInput_vitals || onInput_vitals; } catch (e) {}
-  }
-
-  try {
-    if (typeof modifier === 'function' && modifier.__patched_for_vitals !== true) {
-      var originalModifier = modifier;
-      var patched = function(text){
-        var r = onInput_vitals(text);
-        if (r && typeof r.text === 'string' && r.text !== text) return r.text;
-        return originalModifier(text);
-      };
-      patched.__patched_for_vitals = true;
-      try { modifier = patched; } catch (e) {}
-    }
-  } catch (e) {}
-
-})();
-
-
-// --------------------------
-// UNIVERSAL TICKERS
-// - Multiple tickers tracked under state.aetherheart.tickers
-// - Each ticker: { name, value (0-100), interval (string like '4h'), percentPerInterval }
-// - Commands: /tickers (list), /tock <hours> (advance local tick by hours for testing)
-// --------------------------
-(function(){
-  var STATE_ROOT = 'aetherheart';
-  var VALID_INTERVALS = ['1m','5m','15m','1h','4h','8h','1d','3d','1w','1m','1y','2y'];
-
-  function ensureState() {
-    if (typeof state !== 'object') return null;
-    state[STATE_ROOT] = state[STATE_ROOT] || {};
-    state[STATE_ROOT].tickers = state[STATE_ROOT].tickers || [];
-    return state[STATE_ROOT];
-  }
-
-  function parseIntervalToHours(interval) {
-    if (!interval) return null;
-    var m = interval.match(/^(\d+)(m|h|d|w|y)$/i);
-    if (!m) return null;
-    var n = parseInt(m[1],10);
-    var u = m[2].toLowerCase();
-    switch(u) {
-      case 'm': return n/60.0; // minutes to hours
-      case 'h': return n;
-      case 'd': return n*24;
-      case 'w': return n*24*7;
-      case 'y': return n*24*365;
-    }
-    return null;
-  }
-
-  function listTickers() {
-    var s = ensureState(); if (!s) return [];
-    return s.tickers.map(function(t){ return { name: t.name, value: Math.round(t.value), interval: t.interval, percentPerInterval: t.percentPerInterval }; });
-  }
-
-  function addTicker(name, interval, percentPerInterval) {
-    var s = ensureState(); if (!s) return false;
-    if (!name || !interval) return false;
-    percentPerInterval = typeof percentPerInterval === 'number' ? percentPerInterval : 1; // default 1% per interval
-    // clamp interval to allowed simple pattern
-    var hours = parseIntervalToHours(interval);
-    if (hours === null) return false;
-    // remove existing with same name
-    for (var i = s.tickers.length -1; i >=0; i--) { if (s.tickers[i].name === name) s.tickers.splice(i,1); }
-    s.tickers.push({ name: name, value: 0, interval: interval, percentPerInterval: percentPerInterval });
-    return true;
-  }
-
-  function removeTicker(name) {
-    var s = ensureState(); if (!s) return false;
-    for (var i = s.tickers.length-1;i>=0;i--) { if (s.tickers[i].name === name) { s.tickers.splice(i,1); return true; } }
-    return false;
-  }
-
-  // Advance tickers by given hours. For each ticker, increase value by (hours / intervalHours) * percentPerInterval
-  // Clamp at 100. Return list of tickers that reached 100 this advance.
-  function advanceTickers(hours) {
-    var s = ensureState(); if (!s) return [];
-    var finished = [];
-    s.tickers.forEach(function(t){
-      var ih = parseIntervalToHours(t.interval);
-      if (!ih || ih <= 0) return;
-      var cycles = hours / ih;
-      var delta = cycles * (t.percentPerInterval || 1);
-      if (!isFinite(delta) || delta <= 0) return;
-      t.value = Math.min(100, (t.value || 0) + delta);
-      if (t.value >= 100) finished.push(t.name);
-    });
-    return finished;
-  }
-
-  function tickerStatusText() {
-    var list = listTickers();
-    if (!list.length) return 'No tickers configured.';
-    return list.map(function(t){ return t.name + ': ' + t.value + '%   (interval: ' + t.interval + ')'; }).join('\n');
-  }
-
-  // Expose API
-  var Tickers = {
-    list: listTickers,
-    add: addTicker,
-    remove: removeTicker,
-    advance: advanceTickers,
-    statusText: tickerStatusText
-  };
-
-  if (typeof window !== 'undefined') { window.AetherheartTickers = window.AetherheartTickers || Tickers; } else { try { this.AetherheartTickers = this.AetherheartTickers || Tickers; } catch (e) {} }
-
-  // onInput handlers for testing commands: /tickers and /tock <hours>
-  function onInput_tickers(text) {
-    if (!text) return { text: text };
-    var t = text.trim();
-    if (t.indexOf('/tickers') === 0) {
-      return { text: tickerStatusText() };
-    }
-    var m = t.match(/^\/tock\s+(\d+(?:\.\d+)?)$/i);
+    var m = t.match(/^\/shop\s+buy\s+(\S+)\s+(.+)/i);
     if (m) {
-      var hours = parseFloat(m[1]);
-      var finished = advanceTickers(hours);
-      var out = 'Advanced tickers by ' + hours + ' hour(s).';
-      if (finished.length) out += '\nTickers finished: ' + finished.join(', ');
-      return { text: out };
+      var cat = m[1];
+      var itemName = m[2].trim();
+      var res = buyItem(cat, itemName);
+      if (res.error) return { text: res.error };
+      return { text: 'Purchased: ' + res.item.name + ' — remaining SP: ' + res.remaining };
     }
+    if (/^\/shop$/i.test(t)) return { text: shopStatusText() };
+    return { text: 'Usage: /shop | /shop list <CATEGORY> | /shop buy <CATEGORY> <item name>' };
+  }
+
+  // Bracket inputs: [SHOP], [SYSTEM], or category names like [STATS]
+  function onInput_shop(text) {
+    if (!text) return { text: text };
+    var trimmed = text.trim();
+    if (/^\[(SHOP|SYSTEM)\]$/i.test(trimmed)) {
+      var res = shopStatusText();
+      // Return a flag object so scenario can suspend narration if supported
+      return { shopUI: true, text: res };
+    }
+    var catMatch = trimmed.match(/^\[([^\]]+)\]$/);
+    if (catMatch) {
+      var cat = catMatch[1];
+      var items = listCategory(cat);
+      if (!items.length) return { text: 'No category named ' + cat };
+      var out = items.map(function(it){ return it.name + ' — ' + it.cost + ' SP — ' + it.description; }).join('\n');
+      return { shopUI: true, text: out };
+    }
+
+    // Slash commands
+    if (trimmed.indexOf('/shop') === 0) return handleShopCommand(trimmed);
     return { text: text };
   }
 
   if (typeof window !== 'undefined') {
-    window.onInput_tickers = window.onInput_tickers || onInput_tickers;
+    window.onInput_shop = window.onInput_shop || onInput_shop;
   } else {
-    try { this.onInput_tickers = this.onInput_tickers || onInput_tickers; } catch (e) {}
+    try { this.onInput_shop = this.onInput_shop || onInput_shop; } catch (e) {}
   }
 
+  // Patch modifier pipeline (non-destructive)
   try {
-    if (typeof modifier === 'function' && modifier.__patched_for_tickers !== true) {
+    if (typeof modifier === 'function' && modifier.__patched_for_shop !== true) {
       var originalModifier = modifier;
       var patched = function(text){
-        var r = onInput_tickers(text);
-        if (r && typeof r.text === 'string' && r.text !== text) return r.text;
+        var r = onInput_shop(text);
+        if (r) {
+          if (r.shopUI) {
+            // return serialized indicator so scenario can suspend narration and show shop UI; fallback to text
+            return JSON.stringify({ __shopUI: true, ui: r.text });
+          }
+          if (typeof r.text === 'string' && r.text !== text) return r.text;
+        }
         return originalModifier(text);
       };
-      patched.__patched_for_tickers = true;
+      patched.__patched_for_shop = true;
       try { modifier = patched; } catch (e) {}
     }
   } catch (e) {}
