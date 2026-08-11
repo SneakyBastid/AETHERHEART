@@ -66,7 +66,7 @@ All secondary cards follow this structure:
 7. Quests
 8. Universal Tickers
 9. System Shop
-10. Card Forge Config (Auto-Card generation)
+10. Card Creator Config (Auto-Card generation)
 11. Configure Time (Time progression controls)
 12. Master (Inventory/Currency/Bills tracking)
 
