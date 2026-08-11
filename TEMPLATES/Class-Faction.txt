@@ -1,1 +1,0 @@
-// REMOVED — per request. Templates moved into LIBRARY.txt as dead-code placeholders when needed.
