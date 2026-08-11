@@ -1,0 +1,89 @@
+🜁 AetherHeart — Systems Index
+
+Modular systems. All default to OFF. Toggle in Configure AetherHeart.
+
+💰 Economy Systems
+
+Currency — Multi-tier, auto-detect gain/loss, purchase blocking
+Inventory — Auto-detect add/remove/consume, categorized
+Bills — Recurring expenses with item requirements
+Income — Recurring earnings
+Ledger — Transaction history
+Prices & Goods — Tiered price lists by preset
+Menu — Natural-language shop menus
+Drugs — Configurable substances with duration effects
+🌍 World & Time Systems
+
+Calendar — Date tracking, month/day/year
+Clock — Hour/minute tracking
+Time Skip Detection — Auto-advance from AI output phrases
+Weather — Seasonal roll system
+Seasons — Monthly mood and weather tables
+Holidays — Fixed annual events
+Events — Time-windowed story events with lead days
+Scheduling — Priority-based event display
+Tickers — Universal time-based counters
+Lunar Cycle — Moon phase tracking
+Route Network — A to B distance mapping for fuel
+World Preset — Fantasy/Western/1920s/Modern/Cyberpunk/Sci-Fi/Wasteland
+Rating — E/Teen/NSFW/Unrated toggle
+🧠 Memory & Character Systems
+
+Inner Thoughts — Marker-based memory injection to card notes
+Inner Opinions — Relationship dynamics and vibe lists
+Character Memory — Per-character state/goal/mood/trust/debt/secret
+Journal — Short declarative quest retention statements
+Quest — Plot arc tracking, bounty auto-promotion
+⚔️ RP Systems
+
+Vitals — HP / MP / Stamina
+Survival — Hunger / Thirst / Tiredness
+Leveling — XP gain, level progression
+Stats — STR, DEX, CON, INT, WIS, CHA
+Skills — Skill list tied to stats
+Abilities — Special ability tracking
+Powers — Power/spell tracking
+Loot — Tiered drops, letters, lore books
+Fuel — Resource tracking with route costs
+Ammo — Ammunition tracking
+Momentum — Combat momentum tracker
+Reputation — Law, Social, Heat, Bounty
+Jail — Incarceration state
+Magic Mode — Sorcery vs Wizarding toggle
+Were/Mer — Transformation appendix
+Racial Stats — Race card detection and modifiers
+🎭 Story & Narration Systems
+
+Narration System — Tense, pacing, prose control, speech patterns, LoLa, jailbreak
+Story Splice — Style injection (Western, Noir, Gothic, Military, Fairy Tale, Found Footage, Shonen Battle, Soap Opera, Hard Sci-Fi, Sword & Sorcery, Cozy Mystery, Bombastic Superhero, Full Inner Monologue, Confessional Cutaway, Deadpool Break, Live Studio Audience, Sitcom, Breathing Room, No Deus Ex)
+Isekai — Real displacement
+Shift — Time jump
+Time Agent — Time travel agent
+Sleeve Jump — Body-swap
+🃏 Card Creator & Boards
+
+Card Creator — Classic mode (Auto-Cards style) or Improved mode
+Format Cards — _Character_, _Location_, _Race_, _Class/Faction_, _Other_ templates
+/card Command — Auto-type detection
+Bounty Board — Natural language, take to auto-quest
+Job Board — Natural language, separate from bounties
+🔒 Safety & QoL Systems
+
+Silent Mode — System messages to popups
+Standard Rules — Zero-context-cost injection
+Information Firewall — Info leakage blocking
+Banned Phrases — Filter list
+Continuity — Error prevention
+Save / Load — Compact encoded block
+Front Memory — Per-turn status injection
+Deus Ex / Anti-Deus Ex — Divine intervention toggle
+Pose Definitions — Hidden reference
+Faction Ranks — Rank tracking
+Lore Container — World lore storage
+Pronoun Auto-correct — Native, always on
+Essentials Supplement — Extra essentials toggle
+Game Over — HP <= 0 screen
+Mass Card Creation — Batch generation
+Compression — Long notes handling
+Undo / Rollback — Safety net
+Fail-safe Recreation — Auto-rebuild missing cards

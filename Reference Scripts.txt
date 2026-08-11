@@ -1,0 +1,278 @@
+AetherHeart — Reference Scripts (GitHub)
+
+
+
+Realmheart v2.3
+
+Inner Self
+
+Auto-Cards
+
+Story Arc Engine
+
+Living Characters
+
+LoLa / Localized Languages
+
+
+
+
+
+Base / Foundation (Realmheart Renamed)
+
+
+
+Multi-tier currency (fantasy/modern/sci-fi)
+
+Auto-detect currency gain/loss from text
+
+Inventory tracking with auto-detection
+
+Recurring bills and income with scheduling
+
+Calendar, clock, weather system
+
+Holidays and story event tracking
+
+Bounty board (BROKEN — pinned for fix)
+
+Goods & services price list (BROKEN — pinned for fix)
+
+Narrator mode toggle
+
+Time skip detection from AI output
+
+Inventory add/remove/consume detection
+
+Purchase blocking when insufficient funds
+
+Seasonal weather roll system
+
+Event expiration and lead-day alerts
+
+
+
+Memory & Characters
+
+
+
+Inner Thoughts — {title: Name} marker in entry field, writes to notes field, compresses without keyword loss
+
+Inner Opinions — Relationship dynamics + editable vibe list per character
+
+Character Memory — Per-character state/goal/mood/trust/debt/secret/remembers
+
+Journal — Short declarative statements, entry field first then overflow to notes
+
+Quest — Formerly Story Arc Engine, plot arc tracking, must not conflict with Auto-Cards
+
+
+
+RP Systems
+
+
+
+Vitals — HP / MP / Stamina, linked to Survival
+
+Survival — Hunger / Thirst / Tiredness, linked to Vitals
+
+Leveling & XP — Stat % modifiers, d20 rolls (Attack, Saving, Ability, Initiative)
+
+Stats — STR, DEX, CON, INT, WIS, CHA
+
+Skills — Skill list tied to stats
+
+Abilities — Special abilities list
+
+Powers — Power/spell list
+
+Loot — Level adjectives forced to front, preset tables, letters on bodies, lore books
+
+Fuel — Renameable resource, route network integration
+
+Ammo — Ammunition tracking
+
+Momentum — Combat/action momentum tracker
+
+Reputation — Law / Social / Heat / Bounty, natural language triggers
+
+Jail — Incarceration state tracking
+
+Magic Mode — Toggle: Sorcery (MP-based) vs Wizarding (incantations)
+
+Were/Mer — Transformation appendix
+
+Racial Stats — Detects race cards, creates config, auto-applies modifiers
+
+
+
+World & Time
+
+
+
+World Presets — Fantasy, Western, 1920s, Modern, Cyberpunk, Sci-Fi, Wasteland
+
+Rating — E / Teen / NSFW / Unrated (default E)
+
+Time / Turn — Minutes or hours per turn
+
+Pacing Presets — Slow, Normal, Fast, Dynamic
+
+Scheduling — Priority: Holiday > Day > Weekend/Weekday > Week
+
+Tickers — Universal time-based trackers
+
+Lunar Cycle — Moon phases
+
+Non-Earth Calendars — Custom month/day structures
+
+12h / 24h Toggle
+
+Birthdays — Character birthday tracking
+
+Route Network — A to B distances for fuel
+
+Imperial / Metric Toggle
+
+
+
+Economy & Boards (Realmheart Extensions)
+
+
+
+Inventory Categories — Split: Clothes / Armor / Weapons / Ammo / Other. # = permanent items
+
+Menu — Natural-language price lists (shop menus)
+
+Drugs — Config on main card, outputs to Prices & Goods, duration effects
+
+Bounty Board — Natural language, take > auto-quest, dead/alive/either, turn-in payout
+
+Job Board — Natural language, separate from bounties
+
+Quests — Auto-update toggle, bounties auto-promote to quests
+
+
+
+Story & Narration
+
+
+
+Narration System — Narrate Player, Present/Past tense, Dynamic Pacing, Controlled Prose, Limit Bad Habits, Speech Patterns, LoLa, Jailbreak
+
+Story Splice — Style-only injection (never plot): Western, Noir, Gothic, Military, Fairy Tale, Found Footage, Shonen Battle, Soap Opera, Hard Sci-Fi, Sword & Sorcery, Cozy Mystery, Bombastic Superhero, Full Inner Monologue, Confessional Cutaway, Deadpool Break, Live Studio Audience, Sitcom, Breathing Room, No Deus Ex
+
+Speech Patterns — Via Speech: field on character cards
+
+Isekai — Real displacement mode
+
+Shift — Time jump
+
+Time Agent — Time travel agent mode
+
+Sleeve Jump — Body-swap mechanic
+
+
+
+Card Creator
+
+
+
+Classic Mode — Defaults to classic Auto-Cards mode (toggleable)
+
+Improved Mode — Concise appearance line first
+
+Format Cards — _Character_, _Location_, _Race_, _Class/Faction_, _Other_
+
+/card Command — Auto-type detection
+
+Character Entry Fields — Name, Age, Race, Skin, Gender, Pronouns, Hair Color/Length, Height, Weight, Body, Measurements, Cup Size, Dick Size, Personality, Kinks, Background
+
+
+
+Safety & QoL
+
+
+
+Silent Mode — System messages to popups
+
+Standard Rules — Injected via script, zero context cost
+
+Information Firewall — Blocks unwanted info leakage
+
+Banned Phrases — Filter list
+
+Continuity — Prevents continuity errors
+
+API / Data Source — Blank card, one website
+
+Save / Load — Compact encoded block, transferable
+
+/reset memory and /reset all
+
+Front Memory — Status injection every turn
+
+Deus Ex / Anti-Deus Ex — Toggle divine intervention
+
+Pose Definitions — Hidden pose references
+
+Faction Ranks — Rank tracking
+
+Lore Container — World lore storage
+
+Pronoun Auto-correct — Native, no toggle
+
+Essentials Supplement — Toggle extra essentials
+
+Game Over — Screen when HP <= 0
+
+Mass Card Creation — Batch card generation support
+
+Compression — For long notes
+
+Undo / Rollback — Safety net
+
+Fail-safe Card Recreation — Auto-rebuild missing cards
+
+
+
+Natural Language Triggers
+
+
+
+Inventory — give, take, equip, unequip, wear, remove, reload
+
+Rest / Sleep
+
+Craft / Learn
+
+Fuel Refill
+
+Bounty / Job / Menu / Prices Checks
+
+Time, Schedule, Reputation, Quest Checks
+
+Sleeve / Shift / Isekai / Deus Ex Triggers
+
+
+
+Card Prefix
+
+
+All AetherHeart container cards use · prefix to sort to bottom.
+
+
+
+Key Constraints
+
+
+
+Everything starts OFF by default
+
+Only Configure AetherHeart card exists until user toggles systems on
+
+Data retained when systems turned off; cards deleted to keep count clean
+
+Scripts exploit zero-context-cost rule
+
+No broken "exists on paper only" systems

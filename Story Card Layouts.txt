@@ -1,0 +1,1358 @@
+AetherHeart — Story Card Layouts
+
+All cards use · prefix to sort to bottom. Format markers use underscores: _Character_, _Location_, etc.
+
+· Configure AetherHeart
+
+Category: AetherHeart
+Type: class
+Title: Configure AetherHeart
+
+Entry:
+> AetherHeart is the living heart of your world.
+> Enable AetherHeart: [ON/OFF]
+> Enable Inventory: [ON/OFF]
+> Enable Currency: [ON/OFF]
+> Enable Time: [ON/OFF]
+> Enable Bills: [ON/OFF]
+> Enable Holidays: [ON/OFF]
+> Enable Events: [ON/OFF]
+> Enable Seasons: [ON/OFF]
+> Enable Prices & Goods: [ON/OFF]
+> Enable Bounty Board: [ON/OFF]
+> Enable Job Board: [ON/OFF]
+> Enable Quest: [ON/OFF]
+> Enable Inner Thoughts: [ON/OFF]
+> Enable Inner Opinions: [ON/OFF]
+> Enable Character Memory: [ON/OFF]
+> Enable Journal: [ON/OFF]
+> Enable Vitals: [ON/OFF]
+> Enable Survival: [ON/OFF]
+> Enable Leveling: [ON/OFF]
+> Enable Stats: [ON/OFF]
+> Enable Skills: [ON/OFF]
+> Enable Abilities: [ON/OFF]
+> Enable Powers: [ON/OFF]
+> Enable Loot: [ON/OFF]
+> Enable Fuel: [ON/OFF]
+> Enable Ammo: [ON/OFF]
+> Enable Momentum: [ON/OFF]
+> Enable Reputation: [ON/OFF]
+> Enable Jail: [ON/OFF]
+> Enable Magic Mode: [ON/OFF]
+> Enable Were/Mer: [ON/OFF]
+> Enable Racial Stats: [ON/OFF]
+> Enable Card Creator: [ON/OFF]
+> Enable Narration System: [ON/OFF]
+> Enable Story Splice: [ON/OFF]
+> Enable Standard Rules: [ON/OFF]
+> Enable Information Firewall: [ON/OFF]
+> Enable Banned Phrases: [ON/OFF]
+> Enable Continuity: [ON/OFF]
+> Enable Save/Load: [ON/OFF]
+> Enable Front Memory: [ON/OFF]
+> Enable Deus Ex: [ON/OFF]
+> Enable Pose Definitions: [ON/OFF]
+> Enable Faction Ranks: [ON/OFF]
+> Enable Lore Container: [ON/OFF]
+> Enable Essentials Supplement: [ON/OFF]
+> Enable Game Over: [ON/OFF]
+> Enable Silent Mode: [ON/OFF]
+> Enable Menu: [ON/OFF]
+> Enable Drugs: [ON/OFF]
+> Enable Route Network: [ON/OFF]
+> Preset: [fantasy/modern/sci-fi]
+> Rating: [E/Teen/NSFW/Unrated]
+> Pacing: [slow/normal/fast/dynamic]
+> Time Format: [12h/24h]
+> Units: [Imperial/Metric]
+> Magic Mode: [Sorcery/Wizarding]
+
+Notes:
+Edit toggles above to enable systems.
+All systems start OFF by default.
+Data is retained when a system is turned off.
+Cards are deleted when disabled to keep count clean.
+· Inventory
+
+Category: AetherHeart
+Type: class
+Title: Inventory
+
+Entry:
+== INVENTORY ==
+[Edit Qty to change. Delete line to remove. Add 'Name: N' to add.]
+
+-- CLOTHES --
+(empty)
+
+-- ARMOR --
+(empty)
+
+-- WEAPONS --
+(empty)
+
+-- AMMO --
+(empty)
+
+-- OTHER --
+(empty)
+
+Notes:
+# = permanent item (cannot be lost/removed by scripts)
+· Currency / Ledger
+
+Category: AetherHeart
+Type: class
+Title: Ledger
+
+Entry:
+== LEDGER ==
+Balance: 0 Gold
+
+-- RECENT TRANSACTIONS --
+(empty)
+
+Notes:
+Auto-populated by script. Do not edit.
+· Bills & Income
+
+Category: AetherHeart
+Type: class
+Title: Bills
+
+Entry:
+== BILLS & INCOME ==
+Balance: 0 Gold | Day: 0
+
+[ADD BILL: Name | 20 Gold | 1d]
+[ADD INCOME: Name | 80 Gold | 7d]
+[Intervals: 1d | 7d | 1w | 30d | 1m | 1y | 2y]
+[DEL: Name]
+[Toggle: [ON] or [OFF] before the name]
+
+-- RECURRING BILLS --
+(none yet)
+
+-- RECURRING INCOME --
+(none yet)
+
+Notes:
+Bills can require items: [Item Name xQty]
+· Time Settings
+
+Category: AetherHeart
+Type: class
+Title: Configure Time
+
+Entry:
+== TIME SETTINGS ==
+
+-- DATE & TIME (editable) --
+[Month: 1-12 | Day: 1-31 | Hour: 0-23]
+Year: 1200
+Month: 1
+Day: 1
+Hour: 6
+
+-- CURRENT --
+January 1, Year 1200 6:00 AM
+Adventure day: 0
+
+-- TIME CONFIG --
+Hours Per Turn: 2
+Pacing: normal
+
+Notes:
+Edit date/time values above. Script auto-detects time skips in story text.
+· Holidays
+
+Category: AetherHeart
+Type: class
+Title: Holidays
+
+Entry:
+== HOLIDAYS ==
+
+-- TODAY --
+(none)
+
+-- UPCOMING (next 30 days) --
+(none)
+
+[ADD: Name | Month | Day | Type]
+[DEL: Name]
+[EDIT: Name | Month | Day | Type]
+Types: holiday, birthday, seasonal, religious, custom
+
+Notes:
+Auto-populated by preset. Player can add custom holidays.
+· Events
+
+Category: AetherHeart
+Type: class
+Title: Events
+
+Entry:
+== EVENTS ==
+
+-- ACTIVE / UPCOMING --
+(none)
+
+[ADD: Name | StartMonth | StartDay | EndMonth | EndDay | LeadDays | Repeat | Description]
+[DEL: Name]
+Repeat: yearly or blank (one-time)
+
+Notes:
+Events appear in AI context when active or within lead days.
+· Seasons
+
+Category: AetherHeart
+Type: class
+Title: Seasons
+
+Entry:
+== SEASONS ==
+(Read-only — managed by script)
+
+-- NOW: January --
+Season: Deep Winter
+Weather: Clear
+Mood: Bitter cold, heavy snowfall, roads treacherous
+
+Chance table:
+Blizzard: 15%
+Heavy Snow: 30%
+Light Snow: 20%
+Overcast: 25%
+Clear: 10%
+
+Notes:
+Auto-updates monthly. Weather rolls daily.
+· Prices & Goods
+
+Category: AetherHeart
+Type: class
+Title: Prices & Goods
+
+Entry:
+== PRICES & GOODS ==
+
+-- CURRENCY TIERS --
+(Read-only — edit in Configure AetherHeart)
+Gold: 100 base
+Silver: 10 base
+Copper: 1 base
+
+-- PRICE LIST --
+[Category | Label | Amount]
+[ADD: Category | Label | Amount]
+[DEL: Category | Label]
+[RENAME: OldCategory | NewCategory]
+
+Notes:
+Auto-populated by preset. Player can edit prices.
+· Bounty Board
+
+Category: AetherHeart
+Type: class
+Title: Bounty Board
+
+Entry:
+== BOUNTY BOARD ==
+
+[ADD: Target Name | Payout | Dead/Alive/Either | Description]
+[TAKE: Target Name]
+[DEL: Target Name]
+[TURN-IN: Target Name]
+
+-- ACTIVE BOUNTIES --
+(none)
+
+-- COMPLETED --
+(none)
+
+Notes:
+Taking a bounty auto-creates a Quest entry.
+Turn-in checks if target is in Journal or confirmed by story.
+· Job Board
+
+Category: AetherHeart
+Type: class
+Title: Job Board
+
+Entry:
+== JOB BOARD ==
+
+[ADD: Job Name | Payout | Description]
+[TAKE: Job Name]
+[DEL: Job Name]
+[COMPLETE: Job Name]
+
+-- AVAILABLE JOBS --
+(none)
+
+-- IN PROGRESS --
+(none)
+
+-- COMPLETED --
+(none)
+
+Notes:
+Separate from bounties. No combat required.
+· Quest
+
+Category: AetherHeart
+Type: class
+Title: Quest
+
+Entry:
+== QUESTS ==
+
+[Auto-Update: ON/OFF]
+
+-- ACTIVE --
+(none)
+
+-- COMPLETED --
+(none)
+
+-- FAILED --
+(none)
+
+Notes:
+Auto-updates from Bounty Board takes.
+Bounties auto-promote to quests.
+Tracks objective progress via natural language.
+· Inner Thoughts
+
+Category: AetherHeart
+Type: class
+Title: Inner Thoughts
+
+Entry:
+== INNER THOUGHTS ==
+
+[Auto-Compress: ON/OFF]
+[Compression Threshold: 3200 chars]
+
+-- ACTIVE MARKERS --
+(none)
+
+Instructions:
+Place {title: CharacterName} in any story card's entry field.
+Inner Thoughts will write memories to that card's NOTES field.
+Never writes to entry field. User defines character in entry.
+
+Notes:
+Compresses notes when crowded without losing keywords.
+Uses zero-width label encoding for context linking.
+· Inner Opinions
+
+Category: AetherHeart
+Type: class
+Title: Inner Opinions
+
+Entry:
+== INNER OPINIONS ==
+
+-- RELATIONSHIP DYNAMICS --
+(none)
+
+-- VIBE LISTS --
+(none)
+
+[ADD: Character Name | Opinion | Vibe]
+[DEL: Character Name]
+
+Notes:
+Tracks how characters feel about each other.
+Editable vibe list per character (friendly, hostile, suspicious, etc.)
+· Character Memory
+
+Category: AetherHeart
+Type: class
+Title: Character Memory
+
+Entry:
+== CHARACTER MEMORY ==
+
+[ADD: Character Name]
+[DEL: Character Name]
+
+-- STORED CHARACTERS --
+(none)
+
+Per-character fields:
+- State
+- Goal
+- Mood
+- Trust (0-100)
+- Debt
+- Secret
+- Remembers
+
+Notes:
+Auto-detects characters from story cards.
+Player can manually add/edit entries.
+· Journal
+
+Category: AetherHeart
+Type: class
+Title: Journal
+
+Entry:
+== JOURNAL ==
+
+-- RECENT ENTRIES --
+(none)
+
+[ADD: Declarative statement]
+[DEL: Entry #]
+
+Notes:
+Short declarative statements only.
+"I slayed the dragon of Feycrest."
+Writes to entry first, overflows to notes when crowded.
+Functions as quest retention memory.
+· Vitals
+
+Category: AetherHeart
+Type: class
+Title: Vitals
+
+Entry:
+== VITALS ==
+
+[Linked to Survival: ON/OFF]
+
+-- PLAYER --
+HP: 100 / 100
+MP: 50 / 50
+Stamina: 100 / 100
+
+-- STATUS --
+Healthy
+
+[SET MAX: HP | MP | Stamina]
+[HEAL / DAMAGE / RESTORE]
+
+Notes:
+Game Over triggers when HP <= 0.
+Linked to Survival system when enabled.
+· Survival
+
+Category: AetherHeart
+Type: class
+Title: Survival
+
+Entry:
+== SURVIVAL ==
+
+[Linked to Vitals: ON/OFF]
+
+-- PLAYER --
+Hunger: 0% (Satiated)
+Thirst: 0% (Hydrated)
+Tiredness: 0% (Rested)
+
+-- STATUS --
+Comfortable
+
+Hunger thresholds: 25% Peckish, 50% Hungry, 75% Starving, 100% Fainting
+Thirst thresholds: 25% Dry, 50% Thirsty, 75% Parched, 100% Collapsing
+Tiredness thresholds: 25% Weary, 50% Tired, 75% Exhausted, 100% Unconscious
+
+Notes:
+Auto-increases over time. Rest/sleep reduces.
+Linked to Vitals when enabled.
+· Leveling
+
+Category: AetherHeart
+Type: class
+Title: Leveling
+
+Entry:
+== LEVELING ==
+
+Level: 1
+XP: 0 / 100
+
+-- D20 ROLLS --
+Attack: d20 + modifiers
+Saving Throw: d20 + modifiers
+Ability Check: d20 + modifiers
+Initiative: d20 + DEX modifier
+
+-- STAT % MODIFIERS --
+STR: +0%
+DEX: +0%
+CON: +0%
+INT: +0%
+WIS: +0%
+CHA: +0%
+
+[ADD XP: amount]
+[RESET]
+
+Notes:
+Auto-detects XP gains from story text.
+Stat modifiers apply to d20 rolls.
+· Stats
+
+Category: AetherHeart
+Type: class
+Title: Stats
+
+Entry:
+== STATS ==
+
+STR: 10 (+0)
+DEX: 10 (+0)
+CON: 10 (+0)
+INT: 10 (+0)
+WIS: 10 (+0)
+CHA: 10 (+0)
+
+[EDIT: Stat | Value]
+[Roll: Stat]
+
+Notes:
+Base 10 is average. Modifiers in parentheses.
+Racial modifiers auto-applied when Racial Stats enabled.
+· Skills
+
+Category: AetherHeart
+Type: class
+Title: Skills
+
+Entry:
+== SKILLS ==
+
+-- COMBAT --
+(none)
+
+-- SOCIAL --
+(none)
+
+-- CRAFTING --
+(none)
+
+-- KNOWLEDGE --
+(none)
+
+-- STEALTH --
+(none)
+
+[ADD: Skill Name | Stat | Level]
+[DEL: Skill Name]
+
+Notes:
+Skills tied to stats for roll modifiers.
+Auto-detects skill usage from story text.
+· Abilities
+
+Category: AetherHeart
+Type: class
+Title: Abilities
+
+Entry:
+== ABILITIES ==
+
+-- ACTIVE --
+(none)
+
+-- PASSIVE --
+(none)
+
+[ADD: Ability Name | Type | Description]
+[DEL: Ability Name]
+[TOGGLE: Active/Passive]
+
+Notes:
+Special abilities beyond basic skills.
+Can be racial, class-based, or learned.
+· Powers
+
+Category: AetherHeart
+Type: class
+Title: Powers
+
+Entry:
+== POWERS ==
+
+-- KNOWN --
+(none)
+
+-- PREPARED --
+(none)
+
+[ADD: Power Name | Cost | Description]
+[DEL: Power Name]
+[PREPARE: Power Name]
+
+Notes:
+Spells, techniques, or special powers.
+MP cost tracked when Magic Mode is Sorcery.
+Incantation format when Magic Mode is Wizarding.
+· Loot
+
+Category: AetherHeart
+Type: class
+Title: Loot
+
+Entry:
+== LOOT ==
+
+-- PRESET TABLES --
+[Select: Poor / Common / Uncommon / Rare / Epic / Legendary]
+
+-- LEVEL ADJECTIVES --
+Forced to front of item names.
+
+-- BODY LOOT --
+Letters found on bodies: [ON/OFF]
+
+-- LORE BOOKS --
+(none)
+
+[ADD: Item | Rarity | Description]
+[DEL: Item]
+[ROLL: Table]
+
+Notes:
+Auto-generates loot based on level and preset.
+Adjectives: Crude, Worn, Fine, Masterwork, Legendary, Mythic
+· Fuel
+
+Category: AetherHeart
+Type: class
+Title: Fuel
+
+Entry:
+== FUEL ==
+
+[Resource Name: Fuel]
+[Amount: 100 / 100]
+
+-- ROUTE COSTS --
+(none)
+
+[RENAME: New Resource Name]
+[REFILL: amount]
+[SET MAX: amount]
+[ADD ROUTE: A to B | Cost]
+
+Notes:
+Renameable resource (Fuel, Mana Crystals, Battery, etc.)
+Route network integration for travel costs.
+· Ammo
+
+Category: AetherHeart
+Type: class
+Title: Ammo
+
+Entry:
+== AMMO ==
+
+-- TRACKED TYPES --
+(none)
+
+[ADD: Ammo Type | Qty]
+[DEL: Ammo Type]
+[RELOAD: Weapon | Ammo Type]
+
+Notes:
+Tracks ammunition by type.
+Auto-detects reload actions from story text.
+· Momentum
+
+Category: AetherHeart
+Type: class
+Title: Momentum
+
+Entry:
+== MOMENTUM ==
+
+Current: 0
+
+-- GAINS --
+Successful attacks, clever tactics, rallying allies
+
+-- LOSSES --
+Missed attacks, failed saves, hesitation, being outnumbered
+
+-- THRESHOLDS --
++5: Advantage
++10: Dominating
+-5: Disadvantage
+-10: Crumbling
+
+[RESET]
+
+Notes:
+Combat and action momentum tracker.
+Influences AI narration tone.
+· Reputation
+
+Category: AetherHeart
+Type: class
+Title: Reputation
+
+Entry:
+== REPUTATION ==
+
+-- LAW --
+0 (Unknown)
+
+-- SOCIAL --
+0 (Unknown)
+
+-- HEAT --
+0 (Cool)
+
+-- BOUNTY --
+0 (None)
+
+[ADJUST: Category | Amount | Reason]
+[RESET: Category]
+
+Notes:
+Natural language triggers from story text.
+Heat increases with crimes. Bounty accumulates.
+· Jail
+
+Category: AetherHeart
+Type: class
+Title: Jail
+
+Entry:
+== JAIL ==
+
+Status: Free
+
+-- SENTENCE --
+(none)
+
+-- TIME SERVED --
+0 days
+
+-- CRIMES --
+(none)
+
+[SET: Status | Sentence | Time]
+[ADD CRIME: Description]
+[ESCAPE]
+[RELEASE]
+
+Notes:
+Tracks incarceration state.
+Auto-triggers when Heat/Bounty thresholds exceeded.
+· Magic Mode
+
+Category: AetherHeart
+Type: class
+Title: Magic Mode
+
+Entry:
+== MAGIC MODE ==
+
+[Mode: Sorcery / Wizarding]
+
+-- SORCERY --
+MP-based casting.
+Known powers cost MP.
+
+-- WIZARDING --
+Incantation-based casting.
+Must speak spell names.
+No MP cost.
+
+[TOGGLE MODE]
+[ADD INCANTATION: Spell Name | Phrase]
+
+Notes:
+Sorcery: Mana pool, spell levels.
+Wizarding: Verbal components, ritual complexity.
+· Were/Mer
+
+Category: AetherHeart
+Type: class
+Title: Were/Mer
+
+Entry:
+== TRANSFORMATION APPENDIX ==
+
+-- TYPE --
+(none)
+
+-- TRIGGER --
+(none)
+
+-- TRANSFORMED STATE --
+(none)
+
+[SET TYPE: Werebeast / Merfolk / Other]
+[SET TRIGGER: Lunar / Emotional / Voluntary / Damage]
+[ADD FORM: Description]
+[REMOVE FORM]
+
+Notes:
+Tracks transformation states and triggers.
+Auto-detects transformation from story text.
+· Racial Stats
+
+Category: AetherHeart
+Type: class
+Title: Racial Stats
+
+Entry:
+== RACIAL STATS ==
+
+-- DETECTED RACES --
+(none)
+
+-- CONFIG --
+[Race Name | STR | DEX | CON | INT | WIS | CHA | Abilities]
+
+[SCAN CARDS]
+[ADD: Race | Modifiers]
+[DEL: Race]
+[APPLY TO: Character]
+
+Notes:
+Auto-detects _Race_ cards.
+Creates config for each race detected.
+Auto-applies racial modifiers to character stats.
+· Card Creator
+
+Category: AetherHeart
+Type: class
+Title: Card Creator
+
+Entry:
+== CARD CREATOR ==
+
+[Mode: Classic / Improved]
+
+-- CLASSIC --
+Auto-Cards style generation.
+Concise, AI-friendly formatting.
+
+-- IMPROVED --
+Appearance line first.
+Detailed character fields.
+
+[/card Name Type] — Auto-detect type
+[/card Name Character]
+[/card Name Location]
+[/card Name Race]
+[/card Name Class]
+[/card Name Other]
+
+Notes:
+Classic mode toggle for users who prefer Auto-Cards style.
+Improved mode uses Format card templates.
+· Format Cards
+
+Category: AetherHeart
+Type: class
+Title: Format
+
+Entry:
+== FORMAT TEMPLATES ==
+
+-- _CHARACTER_ --
+Name:
+Age:
+Race:
+Skin:
+Gender:
+Pronouns:
+Hair Color/Length:
+Height:
+Weight:
+Body:
+Measurements:
+Cup Size:
+Dick Size:
+Personality:
+Kinks:
+Background:
+Speech:
+
+-- _LOCATION_ --
+Name:
+Type:
+Atmosphere:
+Notable Features:
+Inhabitants:
+
+-- _RACE_ --
+Name:
+Traits:
+Stat Modifiers:
+Abilities:
+Lore:
+
+-- _CLASS/FACTION_ --
+Name:
+Type:
+Ranks:
+Abilities:
+Lore:
+
+-- _OTHER_ --
+Name:
+Type:
+Description:
+
+[EDIT TEMPLATE: Type]
+[RESET TEMPLATES]
+
+Notes:
+Defines how Card Creator generates each card type.
+Player can customize templates.
+· Narration System
+
+Category: AetherHeart
+Type: class
+Title: Narration System
+
+Entry:
+== NARRATION SETTINGS ==
+
+[Narrate Player: ON/OFF]
+[Tense: Present / Past]
+[Pacing: Dynamic / Fixed]
+[Prose Control: ON/OFF]
+[Limit Bad Habits: ON/OFF]
+[Speech Patterns: ON/OFF]
+[LoLa: ON/OFF]
+[Jailbreak: ON/OFF]
+
+-- SPEECH PATTERNS --
+Use "Speech:" field on character cards.
+
+-- PROSE CONTROL --
+Prevents repetitive phrasing.
+Enforces varied sentence structure.
+
+-- BAD HABITS TO LIMIT --
+Overuse of "suddenly"
+Excessive adverbs
+Passive voice default
+
+Notes:
+Injects narration guidance every turn.
+Zero context cost when using script injection.
+· Story Splice
+
+Category: AetherHeart
+Type: class
+Title: Story Splice
+
+Entry:
+== STORY SPLICE ==
+
+[Active Splice: None]
+
+-- AVAILABLE STYLES --
+□ Western
+□ Noir
+□ Gothic
+□ Military
+□ Fairy Tale
+□ Found Footage
+□ Shonen Battle
+□ Soap Opera
+□ Hard Sci-Fi
+□ Sword & Sorcery
+□ Cozy Mystery
+□ Bombastic Superhero
+□ Full Inner Monologue
+□ Confessional Cutaway
+□ Deadpool Break
+□ Live Studio Audience
+□ Sitcom
+□ Breathing Room
+□ No Deus Ex
+
+[ACTIVATE: Style]
+[DEACTIVATE]
+
+Notes:
+Style-only injection. Never affects plot.
+One active at a time.
+Influences tone, vocabulary, and narrative voice.
+· Standard Rules
+
+Category: AetherHeart
+Type: class
+Title: Standard Rules
+
+Entry:
+== STANDARD RULES ==
+
+[Injected via script: ON/OFF]
+
+-- RULES --
+1. Respect established character traits.
+2. Maintain continuity with previous events.
+3. Do not introduce knowledge the player lacks.
+4. Keep NPC actions consistent with their goals.
+5. Honor player agency and choices.
+6. Avoid deus ex machina solutions.
+7. Maintain tone consistent with rating.
+
+Notes:
+Injected via script for zero context cost.
+Not stored in AI context window.
+· Information Firewall
+
+Category: AetherHeart
+Type: class
+Title: Information Firewall
+
+Entry:
+== INFORMATION FIREWALL ==
+
+[Active: ON/OFF]
+
+-- BLOCKED CATEGORIES --
+□ Future plot events
+□ NPC hidden motives
+□ Secret locations
+□ Unrevealed identities
+□ DM knowledge
+
+-- ALLOWED --
+□ Established facts
+□ Player observations
+□ Common knowledge
+
+[ADD BLOCK: Category]
+[DEL BLOCK: Category]
+
+Notes:
+Prevents AI from leaking info player shouldn't know.
+Filters context before AI sees it.
+· Banned Phrases
+
+Category: AetherHeart
+Type: class
+Title: Banned Phrases
+
+Entry:
+== BANNED PHRASES ==
+
+-- FILTER LIST --
+(none)
+
+[ADD: Phrase]
+[DEL: Phrase]
+[CASE SENSITIVE: ON/OFF]
+
+Notes:
+Filters out unwanted phrases from AI output.
+Can be words, phrases, or patterns.
+· Continuity
+
+Category: AetherHeart
+Type: class
+Title: Continuity
+
+Entry:
+== CONTINUITY ==
+
+[Active: ON/OFF]
+
+-- TRACKED FACTS --
+(none)
+
+-- CONTRADICTIONS DETECTED --
+(none)
+
+[ADD FACT: Statement]
+[DEL FACT: Statement]
+[SCAN FOR CONTRADICTIONS]
+
+Notes:
+Tracks established facts.
+Flags contradictions in AI output.
+Prevents continuity errors.
+· Save / Load
+
+Category: AetherHeart
+Type: class
+Title: Save
+
+Entry:
+== SAVE / LOAD ==
+
+[Auto-Save: ON/OFF]
+
+-- CURRENT SAVE --
+(none)
+
+[EXPORT] — Generates compact encoded block
+[IMPORT] — Paste encoded block here
+
+Notes:
+Compact encoded block for easy transfer.
+Includes all AetherHeart data.
+Can be shared between scenarios.
+· Front Memory
+
+Category: AetherHeart
+Type: class
+Title: Front Memory
+
+Entry:
+== FRONT MEMORY ==
+
+[Inject Every Turn: ON/OFF]
+
+-- STATUS INJECTION --
+(none)
+
+[ADD: Status line]
+[DEL: Status line]
+[PRIORITY: High / Normal / Low]
+
+Notes:
+Injects status updates every turn.
+Uses zero-context-cost script injection.
+Keeps player informed without clutter.
+· Deus Ex / Anti-Deus Ex
+
+Category: AetherHeart
+Type: class
+Title: Deus Ex
+
+Entry:
+== DEUS EX MACHINA ==
+
+[Mode: Neutral / Anti-Deus Ex / Deus Ex OK]
+
+-- ANTI-DEUS EX --
+Blocks convenient rescues.
+Blocks sudden power-ups.
+Blocks unexplained knowledge.
+
+-- DEUS EX OK --
+Allows divine intervention.
+Allows lucky breaks.
+
+[TOGGLE MODE]
+
+Notes:
+Controls whether AI can use convenient solutions.
+Anti mode forces player-driven problem solving.
+· Pose Definitions
+
+Category: AetherHeart
+Type: class
+Title: Pose Definitions
+
+Entry:
+== POSE DEFINITIONS ==
+
+[Hidden Reference: ON/OFF]
+
+-- DEFINITIONS --
+(none)
+
+[ADD: Pose Name | Description]
+[DEL: Pose Name]
+
+Notes:
+Hidden reference for scene accuracy.
+Not visible to AI unless explicitly referenced.
+Prevents physically impossible descriptions.
+· Faction Ranks
+
+Category: AetherHeart
+Type: class
+Title: Faction Ranks
+
+Entry:
+== FACTION RANKS ==
+
+-- FACTIONS --
+(none)
+
+[ADD FACTION: Name]
+[ADD RANK: Faction | Rank Name | Level]
+[SET PLAYER RANK: Faction | Rank]
+[DEL: Faction / Rank]
+
+Notes:
+Tracks player standing in organizations.
+Influences NPC reactions and available quests.
+· Lore Container
+
+Category: AetherHeart
+Type: class
+Title: Lore
+
+Entry:
+== LORE ==
+
+-- WORLD LORE --
+(none)
+
+-- HISTORY --
+(none)
+
+-- MYTHOLOGY --
+(none)
+
+[ADD: Category | Entry]
+[DEL: Category | Entry]
+
+Notes:
+World lore storage.
+Injects relevant lore based on context.
+Prevents info dump by filtering.
+· Game Over
+
+Category: AetherHeart
+Type: class
+Title: Game Over
+
+Entry:
+== GAME OVER ==
+
+[Trigger: HP <= 0]
+[Permadeath: ON/OFF]
+
+-- ON DEATH --
+□ Show Game Over screen
+□ Offer continue (if not permadeath)
+□ Save state before death
+□ Allow rollback
+
+[TEST GAME OVER]
+[RESET]
+
+Notes:
+Triggers when Vitals HP reaches 0.
+Can be disabled for sandbox mode.
+· Silent Mode
+
+Category: AetherHeart
+Type: class
+Title: Silent Mode
+
+Entry:
+== SILENT MODE ==
+
+[Active: ON/OFF]
+
+-- BEHAVIOR --
+System messages → Popups
+No chat output for system events
+Visual indicators only
+
+[TOGGLE]
+
+Notes:
+Reduces chat clutter.
+System events shown as brief popups.
+· Menu
+
+Category: AetherHeart
+Type: class
+Title: Menu
+
+Entry:
+== MENU ==
+
+-- SHOP MENU --
+(none)
+
+[ADD: Item | Price | Description]
+[DEL: Item]
+[DISPLAY]
+
+Notes:
+Natural-language price lists.
+Displayed when player enters shops.
+· Drugs
+
+Category: AetherHeart
+Type: class
+Title: Drugs
+
+Entry:
+== DRUGS ==
+
+[Config on main card: ON/OFF]
+
+-- SUBSTANCES --
+(none)
+
+[ADD: Name | Duration | Effect | Price]
+[DEL: Name]
+[EFFECTS OUTPUT TO: Prices & Goods]
+
+Notes:
+Configurable substances with duration effects.
+Outputs to Prices & Goods when enabled.
+· Route Network
+
+Category: AetherHeart
+Type: class
+Title: Route Network
+
+Entry:
+== ROUTE NETWORK ==
+
+[Units: Imperial / Metric]
+
+-- ROUTES --
+(none)
+
+[ADD: Location A | Location B | Distance]
+[DEL: Route]
+[CALCULATE: A to B]
+
+Notes:
+A to B distance mapping for fuel costs.
+Auto-calculates fuel consumption for travel.
+· API / Data Source
+
+Category: AetherHeart
+Type: class
+Title: API
+
+Entry:
+== API / DATA SOURCE ==
+
+[Website: (blank)]
+[Active: ON/OFF]
+
+Notes:
+Blank card for external data source.
+One website reference.
+· Essentials Supplement
+
+Category: AetherHeart
+Type: class
+Title: Essentials Supplement
+
+Entry:
+== ESSENTIALS SUPPLEMENT ==
+
+[Active: ON/OFF]
+
+-- ADDITIONAL ESSENTIALS --
+(none)
+
+[ADD: Essential]
+[DEL: Essential]
+
+Notes:
+Extra essentials for advanced users.
+Lightweight additions to core systems.

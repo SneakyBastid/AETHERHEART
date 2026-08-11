@@ -1,0 +1,689 @@
+/*
+LIVINGNARRATIVES INFORMATION FIREWALL
+AI Dungeon Script Library
+
+LivingNarratives work. Built for scene-scoped NPC knowledge control in AI Dungeon.
+Paste this whole file into one Script Library card that loads before the hooks.
+Then put these tiny wrappers in the three hook files:
+
+INPUT / onInput
+const modifier = (text) => {
+  return InformationFirewall("input", text);
+};
+modifier(text);
+
+CONTEXT / onModelContext
+const modifier = (text) => {
+  return InformationFirewall("context", text);
+};
+modifier(text);
+
+OUTPUT / onOutput
+const modifier = (text) => {
+  return InformationFirewall("output", text);
+};
+modifier(text);
+
+Purpose:
+- Tracks who was present for conversations first.
+- Detects characters only from known character/roster story cards, never from arbitrary capitalized prose.
+- Injects only scene-scoped knowledge for the current scene.
+- Blocks NPCs from commenting on conversations they did not witness, receive, or learn.
+- Tracks explicit important facts only when marked, instead of turning every casual line into a fact.
+
+Example:
+- You tell Rick in the break room, "I like chips."
+- Rick may know the chips fact.
+- Diane does not know it in the mess hall unless she was present or someone tells her.
+
+Optional important fact markers:
+- [fact: Rick knows the pantry code]
+- important fact: Diane saw the broken radio
+
+Optional roster marker if your character cards do not have a character/NPC type:
+- [roster: Rick, Diane, Morgan Lee]
+- IF_ROSTER: Rick, Diane, Morgan Lee
+*/
+
+(function () {
+  "use strict";
+
+  if (!String.prototype.trim) {
+    String.prototype.trim = function () {
+      return String(this).replace(/^\s+|\s+$/g, "");
+    };
+  }
+
+  if (!Array.prototype.filter) {
+    Array.prototype.filter = function (fn, thisArg) {
+      var out = [];
+      for (var i = 0; i < this.length; i++) {
+        if (i in this && fn.call(thisArg, this[i], i, this)) out.push(this[i]);
+      }
+      return out;
+    };
+  }
+
+  var IF_CONFIG = {
+    MAX_CONVERSATIONS: 60,
+    MAX_FACTS: 80,
+    MAX_NAMES: 24,
+    MAX_FACT_TEXT: 130,
+    MAX_CONVERSATION_TEXT: 180,
+    MAX_PACKET_CHARS: 2600,
+    PLAYER_NAME: "Player",
+    REPAIR_EMPTY_OUTPUT: "The scene continues without anyone bringing that up.",
+    DEBUG: false
+  };
+
+  var STOP_NAMES = {
+    You: true, Your: true, Yours: true, The: true, A: true, An: true, And: true, But: true,
+    Or: true, He: true, She: true, They: true, Them: true, His: true, Her: true, Their: true,
+    It: true, This: true, That: true, Then: true, There: true, Here: true, In: true, On: true,
+    At: true, To: true, From: true, With: true, Into: true, Through: true, Chapter: true,
+    Story: true, Note: true, System: true, Context: true, Information: true, Firewall: true,
+    I: true, Me: true, My: true, Mine: true, We: true, Us: true, Our: true
+  };
+
+  function getStateRoot() {
+    if (typeof state === "undefined" || !state) return null;
+    if (!state.informationFirewall) {
+      state.informationFirewall = {
+        version: 1,
+        turn: 0,
+        location: "unknown location",
+        present: [],
+        knownCharacters: [],
+        conversations: [],
+        facts: [],
+        recentRepairs: []
+      };
+    }
+    if (!state.informationFirewall.conversations) state.informationFirewall.conversations = [];
+    if (!state.informationFirewall.facts) state.informationFirewall.facts = [];
+    if (!state.informationFirewall.present) state.informationFirewall.present = [];
+    if (!state.informationFirewall.knownCharacters) state.informationFirewall.knownCharacters = [];
+    if (!state.informationFirewall.recentRepairs) state.informationFirewall.recentRepairs = [];
+    return state.informationFirewall;
+  }
+
+  function clampText(value, maxLen) {
+    var clean = String(value || "").replace(/\s+/g, " ").trim();
+    if (clean.length <= maxLen) return clean;
+    return clean.slice(0, maxLen - 1).replace(/\s+\S*$/, "") + "...";
+  }
+
+  function uniq(list) {
+    var seen = {};
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+      var name = normalizeName(list[i]);
+      if (!name || seen[name]) continue;
+      seen[name] = true;
+      out.push(name);
+    }
+    return out;
+  }
+
+  function normalizeName(name) {
+    name = String(name || "").replace(/[^A-Za-z0-9 _'-]/g, "").replace(/\s+/g, " ").trim();
+    if (!name || STOP_NAMES[name]) return "";
+    if (name.length < 2 || name.length > 32) return "";
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  }
+
+  function addKnownCharacters(mem, names) {
+    mem.knownCharacters = uniq((mem.knownCharacters || []).concat(names || [])).slice(0, IF_CONFIG.MAX_NAMES);
+  }
+
+  function splitRosterNames(value) {
+    var clean = String(value || "").replace(/\band\b/gi, ",");
+    var parts = clean.split(/[,;\n]/);
+    var out = [];
+    for (var i = 0; i < parts.length; i++) {
+      var name = normalizeName(parts[i]);
+      if (name) out.push(name);
+    }
+    return uniq(out);
+  }
+
+  function extractRosterMarkers(textValue) {
+    var textBlock = String(textValue || "");
+    var out = [];
+    var patterns = [
+      /\[(?:roster|cast|characters|npcs)\s*:\s*([^\]]{2,240})\]/gi,
+      /\bIF_ROSTER\s*:\s*([^\n]{2,240})/gi,
+      /\b(?:Characters|Cast|NPCs)\s*:\s*([^\n]{2,240})/g
+    ];
+    for (var p = 0; p < patterns.length; p++) {
+      var match;
+      while ((match = patterns[p].exec(textBlock))) out = out.concat(splitRosterNames(match[1]));
+    }
+    return uniq(out);
+  }
+
+  function extractCharacterCardName(card) {
+    var out = [];
+    var entry = String((card && card.entry) || "");
+    var keys = String((card && card.keys) || "");
+    var match = /\b(?:Name|Character|NPC)\s*:\s*([A-Z][A-Za-z0-9 _'-]{1,31})/i.exec(entry);
+    if (match) out.push(match[1]);
+    if (keys) out = out.concat(splitRosterNames(keys));
+    return uniq(out);
+  }
+
+  function refreshKnownCharacters(mem) {
+    var found = [];
+    if (typeof storyCards !== "undefined" && storyCards && storyCards.length) {
+      for (var i = 0; i < storyCards.length; i++) {
+        var card = storyCards[i] || {};
+        var type = String(card.type || "");
+        var entry = String(card.entry || "");
+        found = found.concat(extractRosterMarkers(entry));
+        if (/character|npc|cast|roster/i.test(type)) found = found.concat(extractCharacterCardName(card));
+      }
+    }
+    if (typeof info !== "undefined" && info && info.characterNames && info.characterNames.length) {
+      found = found.concat(info.characterNames);
+    }
+    if (found.length) addKnownCharacters(mem, found);
+  }
+
+  function addPresent(mem, names) {
+    mem.present = uniq((mem.present || []).concat(names || [])).slice(0, IF_CONFIG.MAX_NAMES);
+  }
+
+  function setPresent(mem, names) {
+    mem.present = uniq(names || []).slice(0, IF_CONFIG.MAX_NAMES);
+  }
+
+  function extractNames(textValue, mem) {
+    refreshKnownCharacters(mem);
+    var textBlock = String(textValue || "");
+    var out = [];
+    var roster = (mem && mem.knownCharacters) || [];
+    for (var i = 0; i < roster.length; i++) {
+      var name = normalizeName(roster[i]);
+      if (!name) continue;
+      var re = new RegExp("(^|[^A-Za-z0-9_'-])" + escapeRegExp(name) + "([^A-Za-z0-9_'-]|$)", "i");
+      if (re.test(textBlock)) out.push(name);
+    }
+    return uniq(out);
+  }
+
+  function extractDirectRecipients(textValue, mem) {
+    var textBlock = String(textValue || "");
+    var out = [];
+    var rosterNames = extractNames(textBlock, mem);
+    for (var i = 0; i < rosterNames.length; i++) {
+      var name = rosterNames[i];
+      var direct = new RegExp("\\b(?:tell|told|telling|say to|said to|ask|asked|asking|whisper to|whispered to|explain to|explained to)\\s+" + escapeRegExp(name) + "\\b|\\bto\\s+" + escapeRegExp(name) + "\\b|^>?\\s*(?:You\\s+)?(?:say|tell|ask|whisper)[^A-Za-z]+" + escapeRegExp(name) + "\\b", "i");
+      if (direct.test(textBlock)) out.push(name);
+    }
+    return uniq(out);
+  }
+
+  function stripInputWrapper(inputText) {
+    var t = String(inputText || "").trim();
+    t = t.replace(/^>\s*/, "");
+    t = t.replace(/^[A-Z][A-Za-z0-9 _'-]*\s+says?,\s*/i, "");
+    t = t.replace(/^You\s+says?,\s*/i, "");
+    t = t.replace(/^You\s+/i, "");
+    t = t.replace(/^["']|["']$/g, "");
+    t = t.replace(/[.!?]\s*$/g, "");
+    return t.trim();
+  }
+
+  function detectLocation(inputText, priorLocation) {
+    var t = stripInputWrapper(inputText);
+    var patterns = [
+      /\b(?:go|walk|head|move|return|enter|step|come)\s+(?:back\s+)?(?:to|into|inside|in)\s+(?:the\s+)?([a-z][a-z0-9 '-]{2,40})\b/i,
+      /\b(?:arrive|arrives)\s+(?:at|in)\s+(?:the\s+)?([a-z][a-z0-9 '-]{2,40})\b/i,
+      /\b(?:in|inside|at)\s+(?:the\s+)?([a-z][a-z0-9 '-]{2,40})\b/i
+    ];
+    for (var i = 0; i < patterns.length; i++) {
+      var match = patterns[i].exec(t);
+      if (match) {
+        var loc = match[1].replace(/\b(?:and|where|then|with|alone|again)\b.*$/i, "").trim();
+        loc = loc.replace(/[,.!?].*$/, "").trim();
+        if (loc) return loc;
+      }
+    }
+    return priorLocation || "unknown location";
+  }
+
+  function looksLikeMovement(inputText) {
+    var t = stripInputWrapper(inputText);
+    return /\b(go|walk|head|move|return|enter|step|come|leave|exit|arrive)\b/i.test(t);
+  }
+
+  function compactTopic(topic) {
+    topic = String(topic || "").toLowerCase().replace(/[^a-z0-9 '-]/g, " ").replace(/\s+/g, " ").trim();
+    topic = topic.replace(/^(a|an|the|some|any|that|this|those|these)\s+/i, "");
+    return clampText(topic, 48);
+  }
+
+  function extractTopicTokens(textValue) {
+    var t = String(textValue || "").toLowerCase().replace(/[^a-z0-9 '-]/g, " ");
+    var raw = t.replace(/\s+/g, " ").split(" ");
+    var stop = {
+      the: true, and: true, but: true, you: true, your: true, yours: true, about: true,
+      "with": true, from: true, into: true, that: true, "this": true, these: true, those: true,
+      said: true, says: true, tell: true, told: true, telling: true, asked: true, asks: true,
+      like: true, likes: true, liked: true, love: true, loves: true, hated: true, hate: true,
+      know: true, knows: true, knew: true, heard: true, hear: true, room: true, hall: true,
+      "break": true, mess: true, then: true, there: true, here: true, have: true, has: true,
+      was: true, were: true, are: true, "for": true, she: true, her: true, his: true, him: true,
+      they: true, them: true, player: true
+    };
+    var out = [];
+    var seen = {};
+    for (var i = 0; i < raw.length; i++) {
+      var word = raw[i];
+      if (!word || word.length < 4 || stop[word] || seen[word]) continue;
+      seen[word] = true;
+      out.push(word);
+      if (out.length >= 10) break;
+    }
+    return out;
+  }
+
+  function extractImportantFacts(inputText) {
+    var t = stripInputWrapper(inputText);
+    var facts = [];
+    var patterns = [
+      { re: /\[(?:fact|important|if_fact)\s*:\s*([^\]]{2,140})\]/gi, label: "marked important fact" },
+      { re: /\bimportant fact\s*:\s*([^.!?\n]{2,140})/gi, label: "marked important fact" },
+      { re: /\bremember this\s*:\s*([^.!?\n]{2,140})/gi, label: "marked important fact" }
+    ];
+    for (var p = 0; p < patterns.length; p++) {
+      var match;
+      while ((match = patterns[p].re.exec(t))) {
+        var raw = match[1];
+        raw = raw.replace(/\b(?:to|with|around|near)\s+[A-Z][a-z]+.*$/g, "").trim();
+        var topic = compactTopic(raw);
+        if (!topic || topic.length < 2) continue;
+        facts.push({
+          topic: topic,
+          label: patterns[p].label,
+          text: clampText(t, IF_CONFIG.MAX_FACT_TEXT)
+        });
+      }
+    }
+    return facts;
+  }
+
+  function addConversation(mem, participants, textValue, source) {
+    participants = uniq((participants || []).concat([IF_CONFIG.PLAYER_NAME]));
+    var clean = clampText(stripInputWrapper(textValue), IF_CONFIG.MAX_CONVERSATION_TEXT);
+    if (!clean) return;
+    var topics = extractTopicTokens(clean);
+    mem.conversations.push({
+      id: "conv_" + mem.turn + "_" + (mem.conversations.length + 1),
+      location: mem.location || "unknown location",
+      participants: participants,
+      text: clean,
+      topics: topics,
+      source: source || "scene conversation",
+      created: mem.turn,
+      lastSeen: mem.turn
+    });
+    while (mem.conversations.length > IF_CONFIG.MAX_CONVERSATIONS) mem.conversations.shift();
+  }
+
+  function factMatchesText(fact, textValue) {
+    var t = String(textValue || "").toLowerCase();
+    var topic = String(fact.topic || "").toLowerCase();
+    if (!topic) return false;
+    if (t.indexOf(topic) !== -1) return true;
+    var words = topic.split(/\s+/).filter(function (w) { return w.length >= 4; });
+    for (var i = 0; i < words.length; i++) {
+      if (new RegExp("\\b" + escapeRegExp(words[i]) + "\\b", "i").test(t)) return true;
+    }
+    return false;
+  }
+
+  function nameInList(name, list) {
+    for (var i = 0; i < (list || []).length; i++) {
+      if (list[i] === name) return true;
+    }
+    return false;
+  }
+
+  function conversationMatchesText(conversation, textValue) {
+    var t = String(textValue || "").toLowerCase();
+    var topics = conversation.topics || [];
+    for (var i = 0; i < topics.length; i++) {
+      if (new RegExp("\\b" + escapeRegExp(topics[i]) + "\\b", "i").test(t)) return true;
+    }
+    var clean = String(conversation.text || "").toLowerCase();
+    if (clean && clean.length > 8 && t.indexOf(clean) !== -1) return true;
+    return false;
+  }
+
+  function escapeRegExp(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function addFact(mem, fact, knowers, source) {
+    knowers = uniq((knowers || []).concat([IF_CONFIG.PLAYER_NAME]));
+    for (var i = 0; i < mem.facts.length; i++) {
+      if (mem.facts[i].topic === fact.topic) {
+        mem.facts[i].knowers = uniq((mem.facts[i].knowers || []).concat(knowers));
+        mem.facts[i].lastSeen = mem.turn;
+        return;
+      }
+    }
+    mem.facts.push({
+      id: "if_" + mem.turn + "_" + (mem.facts.length + 1),
+      topic: fact.topic,
+      label: fact.label,
+      text: fact.text,
+      location: mem.location || "unknown location",
+      knowers: knowers,
+      source: source || "player statement",
+      created: mem.turn,
+      lastSeen: mem.turn
+    });
+    while (mem.facts.length > IF_CONFIG.MAX_FACTS) mem.facts.shift();
+  }
+
+  function processInput(mem, inputText) {
+    mem.turn += 1;
+    refreshKnownCharacters(mem);
+    var mentioned = extractNames(inputText, mem);
+    var recipients = extractDirectRecipients(inputText, mem);
+    var moved = looksLikeMovement(inputText);
+    var newLocation = detectLocation(inputText, mem.location);
+    if (moved && newLocation !== mem.location) {
+      mem.location = newLocation;
+      setPresent(mem, recipients.concat(mentioned));
+    } else {
+      mem.location = newLocation;
+      addPresent(mem, recipients.concat(mentioned));
+    }
+
+    var witnesses = uniq((mem.present || []).concat(recipients));
+    if (witnesses.length || /\b(say|tell|ask|whisper|explain|talk|discuss|mention)\b/i.test(inputText)) {
+      addConversation(mem, witnesses, inputText, "player conversation");
+    }
+    var facts = extractImportantFacts(inputText);
+    for (var i = 0; i < facts.length; i++) addFact(mem, facts[i], witnesses, "player said this in-scene");
+  }
+
+  function splitSentences(textValue) {
+    var textBlock = String(textValue || "").replace(/([.!?])([A-Z])/g, "$1 $2");
+    var chunks = textBlock.match(/[^.!?\n]+[.!?]?|\n+/g);
+    return chunks || [textBlock];
+  }
+
+  function isTransferSentence(sentence) {
+    return /\b(tell|tells|told|mention|mentions|mentioned|explain|explains|explained|share|shares|shared|whisper|whispers|whispered|learn|learns|learned|hear|hears|heard|overhear|overhears|overheard)\b/i.test(sentence);
+  }
+
+  function grantTransfers(mem, outputText) {
+    var sentences = splitSentences(outputText);
+    for (var s = 0; s < sentences.length; s++) {
+      var sentence = sentences[s];
+      var names = extractNames(sentence, mem);
+      if (names.length < 2) continue;
+      if (!isTransferSentence(sentence)) continue;
+      for (var c = 0; c < mem.conversations.length; c++) {
+        var conversation = mem.conversations[c];
+        if (!conversationMatchesText(conversation, sentence)) continue;
+        var speakerCanKnowConversation = false;
+        for (var cn = 0; cn < names.length; cn++) {
+          if (nameInList(names[cn], conversation.participants)) speakerCanKnowConversation = true;
+        }
+        if (!speakerCanKnowConversation) continue;
+        conversation.participants = uniq(conversation.participants.concat(names));
+        conversation.lastSeen = mem.turn;
+      }
+      for (var f = 0; f < mem.facts.length; f++) {
+        var fact = mem.facts[f];
+        if (!factMatchesText(fact, sentence)) continue;
+        var existing = {};
+        var k;
+        for (k = 0; k < fact.knowers.length; k++) existing[fact.knowers[k]] = true;
+        var speakerCanKnow = false;
+        for (k = 0; k < names.length; k++) {
+          if (existing[names[k]]) speakerCanKnow = true;
+        }
+        if (!speakerCanKnow) continue;
+        fact.knowers = uniq(fact.knowers.concat(names));
+        fact.lastSeen = mem.turn;
+      }
+    }
+  }
+
+  function processOutputScene(mem, outputText) {
+    var names = extractNames(outputText, mem);
+    if (names.length) addPresent(mem, names);
+    grantTransfers(mem, outputText);
+  }
+
+  function isUnauthorizedSentence(mem, sentence) {
+    if (!sentence) return false;
+    if (!/\b(say|says|said|ask|asks|asked|comment|comments|commented|remark|remarks|remarked|mention|mentions|mentioned|know|knows|knew|remember|remembers|noticed|notice|tease|teases|joke|jokes|laugh|laughs)\b/i.test(sentence)) {
+      return false;
+    }
+    var names = extractNames(sentence, mem);
+    if (!names.length) return false;
+
+    for (var c = 0; c < mem.conversations.length; c++) {
+      var conversation = mem.conversations[c];
+      if (!conversationMatchesText(conversation, sentence)) continue;
+      var anyNamedParticipant = false;
+      for (var cn = 0; cn < names.length; cn++) {
+        if (nameInList(names[cn], conversation.participants)) anyNamedParticipant = true;
+      }
+      if (isTransferSentence(sentence) && anyNamedParticipant) return false;
+      for (var n1 = 0; n1 < names.length; n1++) {
+        if (!nameInList(names[n1], conversation.participants)) {
+          mem.recentRepairs.push({
+            turn: mem.turn,
+            blockedName: names[n1],
+            topic: conversation.topics && conversation.topics.length ? conversation.topics.join(", ") : conversation.text
+          });
+          while (mem.recentRepairs.length > 8) mem.recentRepairs.shift();
+          return true;
+        }
+      }
+    }
+
+    if (!mem.facts || !mem.facts.length) return false;
+    for (var f = 0; f < mem.facts.length; f++) {
+      var fact = mem.facts[f];
+      if (!factMatchesText(fact, sentence)) continue;
+      var knowers = {};
+      for (var k = 0; k < fact.knowers.length; k++) knowers[fact.knowers[k]] = true;
+      for (var n = 0; n < names.length; n++) {
+        if (!knowers[names[n]]) {
+          mem.recentRepairs.push({
+            turn: mem.turn,
+            blockedName: names[n],
+            topic: fact.topic
+          });
+          while (mem.recentRepairs.length > 8) mem.recentRepairs.shift();
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function joinOutputChunks(chunks) {
+    var out = "";
+    for (var i = 0; i < chunks.length; i++) {
+      var chunk = String(chunks[i] || "");
+      if (!chunk) continue;
+      if (!out) {
+        out = chunk;
+        continue;
+      }
+      if (/^\s/.test(chunk) || /\s$/.test(out) || /^\n+/.test(chunk)) {
+        out += chunk;
+      } else {
+        out += " " + chunk;
+      }
+    }
+    return out;
+  }
+
+  function cleanOutput(mem, outputText) {
+    var sentences = splitSentences(outputText);
+    var kept = [];
+    for (var i = 0; i < sentences.length; i++) {
+      if (!isUnauthorizedSentence(mem, sentences[i])) kept.push(sentences[i]);
+    }
+    var cleaned = joinOutputChunks(kept).replace(/\n{3,}/g, "\n\n").trim();
+    return cleaned || IF_CONFIG.REPAIR_EMPTY_OUTPUT;
+  }
+
+  function knownFactsForName(mem, name) {
+    var out = [];
+    for (var i = 0; i < mem.facts.length; i++) {
+      var fact = mem.facts[i];
+      for (var k = 0; k < fact.knowers.length; k++) {
+        if (fact.knowers[k] === name) {
+          out.push(fact);
+          break;
+        }
+      }
+    }
+    return out;
+  }
+
+  function unknownRelevantFactsForName(mem, name) {
+    var out = [];
+    for (var i = 0; i < mem.facts.length; i++) {
+      var fact = mem.facts[i];
+      var knows = false;
+      for (var k = 0; k < fact.knowers.length; k++) {
+        if (fact.knowers[k] === name) knows = true;
+      }
+      if (!knows) out.push(fact);
+    }
+    return out;
+  }
+
+  function conversationsForName(mem, name, shouldKnow) {
+    var out = [];
+    for (var i = 0; i < mem.conversations.length; i++) {
+      var conversation = mem.conversations[i];
+      var knows = nameInList(name, conversation.participants);
+      if ((shouldKnow && knows) || (!shouldKnow && !knows)) out.push(conversation);
+    }
+    return out;
+  }
+
+  function buildPacket(mem) {
+    refreshKnownCharacters(mem);
+    var present = uniq(mem.present || []);
+    var lines = [];
+    lines.push("[LIVINGNARRATIVES INFORMATION FIREWALL - obey strictly]");
+    lines.push("Current location: " + (mem.location || "unknown location") + ".");
+    lines.push("Current visible NPCs inferred by script: " + (present.length ? present.join(", ") : "none confirmed") + ".");
+    lines.push("Primary rule: knowledge is scene-scoped. A character may reference a prior conversation only if they were present for it or a knowing character explicitly tells them on-screen.");
+    lines.push("Do not make NPCs omniscient. Conversations in one room do not travel to another room automatically. General information is still private to witnesses until shared.");
+    lines.push("Marked important facts are a secondary safety layer, not the main memory system.");
+
+    if (!present.length) {
+      lines.push("No NPC has confirmed permission to reference private or recently stated facts.");
+    }
+
+    for (var p = 0; p < present.length; p++) {
+      var name = present[p];
+      var knownConversations = conversationsForName(mem, name, true);
+      var unknownConversations = conversationsForName(mem, name, false);
+      lines.push(name + " may reference conversations they witnessed or were told:");
+      if (knownConversations.length) {
+        for (var kc = Math.max(0, knownConversations.length - 6); kc < knownConversations.length; kc++) {
+          lines.push("- " + knownConversations[kc].text + " (" + knownConversations[kc].location + ")");
+        }
+      } else {
+        lines.push("- No tracked prior conversations.");
+      }
+      if (unknownConversations.length) {
+        var blocked = [];
+        for (var uc = Math.max(0, unknownConversations.length - 6); uc < unknownConversations.length; uc++) {
+          blocked.push(unknownConversations[uc].topics && unknownConversations[uc].topics.length ? unknownConversations[uc].topics.join("/") : unknownConversations[uc].text);
+        }
+        lines.push(name + " must NOT reference these unwitnessed conversation topics: " + blocked.join("; ") + ".");
+      }
+
+      var known = knownFactsForName(mem, name);
+      if (known.length) {
+        lines.push(name + " marked important facts:");
+        for (var k = Math.max(0, known.length - 8); k < known.length; k++) {
+          lines.push("- " + known[k].topic + " (" + known[k].source + " at " + known[k].location + ")");
+        }
+      }
+      var unknown = unknownRelevantFactsForName(mem, name);
+      if (unknown.length) {
+        var topics = [];
+        for (var u = Math.max(0, unknown.length - 8); u < unknown.length; u++) topics.push(unknown[u].topic);
+        lines.push(name + " must NOT know or comment on: " + topics.join("; ") + ".");
+      }
+    }
+
+    if (mem.recentRepairs && mem.recentRepairs.length) {
+      var repair = mem.recentRepairs[mem.recentRepairs.length - 1];
+      lines.push("Recent correction: " + repair.blockedName + " was blocked from referencing '" + repair.topic + "' because they did not know it.");
+    }
+
+    lines.push("[/LIVINGNARRATIVES INFORMATION FIREWALL]");
+    var packet = lines.join("\n");
+    if (packet.length > IF_CONFIG.MAX_PACKET_CHARS) {
+      packet = packet.slice(0, IF_CONFIG.MAX_PACKET_CHARS - 48) + "\n[/LIVINGNARRATIVES INFORMATION FIREWALL]";
+    }
+    return packet;
+  }
+
+  function updateFromRecentHistory(mem) {
+    if (typeof history === "undefined" || !history || !history.length) return;
+    var last = history[history.length - 1];
+    if (!last || !last.text) return;
+    if (last.type === "do" || last.type === "say" || last.type === "story") {
+      var beforeTurn = mem.turn;
+      processInput(mem, last.text);
+      mem.turn = Math.max(mem.turn, beforeTurn);
+    }
+  }
+
+  function debugLog(message) {
+    if (!IF_CONFIG.DEBUG) return;
+    if (typeof log === "function") log("[InformationFirewall] " + message);
+    else if (typeof console !== "undefined" && console.log) console.log("[InformationFirewall] " + message);
+  }
+
+  function api(hook, inputText) {
+    var mem = getStateRoot();
+    if (!mem) return { text: inputText };
+    hook = String(hook || "").toLowerCase();
+
+    if (hook === "input") {
+      processInput(mem, inputText);
+      debugLog("input processed at " + mem.location);
+      return { text: inputText };
+    }
+
+    if (hook === "context" || hook === "modelcontext" || hook === "onmodelcontext") {
+      updateFromRecentHistory(mem);
+      var packet = buildPacket(mem);
+      var original = String(inputText || "");
+      return { text: packet + "\n\n" + original };
+    }
+
+    if (hook === "output") {
+      var cleaned = cleanOutput(mem, inputText);
+      processOutputScene(mem, cleaned);
+      return { text: cleaned };
+    }
+
+    return { text: inputText };
+  }
+
+  var root = (typeof globalThis !== "undefined") ? globalThis : this;
+  root.InformationFirewall = api;
+})();
