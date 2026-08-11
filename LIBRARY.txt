@@ -1,5 +1,5 @@
 // LIBRARY - AETHERHEART
-// Includes: Inner Thoughts, Card Creator, Character Minds, and Vitals & Survival
+// Includes: Inner Thoughts, Card Creator, Character Minds, Vitals & Survival, Universal Tickers
 
 // --------------------------
 // INNER THOUGHTS (Inner Self compatible)
@@ -100,12 +100,16 @@
 
 // --------------------------
 // CARD CREATOR / CARD FORGE
+// - Uses template story cards that contain two fields at top: "Rules:" and "Format:"
+// - Provides a /card command that suspends narration and returns only the generated card text
+// - Auto-detection and cooldowns are controlled via a Configure Aetherheart card
 // --------------------------
 (function(){
   var CFG_TITLE = 'CONFIGURE AETHERHEART';
   var TEMPLATE_PREFIX = 'TEMPLATE: ';
   var DEFAULT_COOLDOWN = 12;
 
+  // Helpers -------------------------------------------------
   function findCardByTitle(title) {
     if (!Array.isArray(storyCards)) return null;
     for (var i = 0; i < storyCards.length; i++) {
@@ -114,6 +118,7 @@
     return null;
   }
 
+  // Read master configuration from the Configure Aetherheart card (if present)
   function readMasterConfig() {
     var cfg = {
       aetherheartCards: true,
@@ -123,6 +128,7 @@
     };
     var card = findCardByTitle(CFG_TITLE);
     if (!card || !card.entry) return cfg;
+    // Parse simple lines like 'Aetherheart Cards: ON' 'Min turns cooldown: 12' (case-insensitive)
     var lines = card.entry.split(/\r?\n/);
     lines.forEach(function(l){
       var s = l.trim();
@@ -139,6 +145,12 @@
     return cfg;
   }
 
+  // Load template by type. Template story card title must be "TEMPLATE: <Type>" and its entry must contain
+  // top-level fields:
+  // Rules:
+  // <blank or rules>
+  // Format:
+  // <format lines>
   function loadTemplate(type) {
     var title = TEMPLATE_PREFIX + type;
     var card = findCardByTitle(title);
@@ -152,7 +164,7 @@
       var ln = lines[i];
       if (/^\s*Rules\s*:/i.test(ln)) { section = 'rules'; continue; }
       if (/^\s*Format\s*:/i.test(ln)) { section = 'format'; continue; }
-      if (/^\s*Notes\s*:/i.test(ln)) { break; }
+      if (/^\s*Notes\s*:/i.test(ln)) { break; } // stop at notes
       if (!section) continue;
       if (section === 'rules') rules.push(ln);
       if (section === 'format') formatLines.push(ln);
@@ -160,14 +172,19 @@
     return { rules: (rules.join('\n')||''), formatLines: formatLines.map(function(l){ return l.trim(); }).filter(Boolean) };
   }
 
+  // Build card text from template formatLines and provided fields
+  // formatLines is an array of labels like ['Name:', 'Appearance:', 'Personality:']
+  // title and details are strings — details may be a freeform description the user provided
   function buildCardText(formatLines, title, details) {
     var out = [];
+    // If format contains a Name: line, place the title there; otherwise put Title at top
     var inserted = false;
     formatLines.forEach(function(l){
       if (/^Name\s*:\s*$/i.test(l)) {
         out.push('Name: ' + title);
         inserted = true;
       } else {
+        // Try to fill the first non-Name field with provided details
         if (!inserted && /^(Appearance|Description|Description:|Role|Description:)$/i.test(l)) {
           out.push(l + ' ' + details);
           inserted = true;
@@ -177,20 +194,28 @@
       }
     });
     if (!inserted) {
+      // No Name field, so put Title as first line
       out.unshift(title);
     }
     return out.join('\n');
   }
 
+  // Create a new story card object (note: in many runtimes you must call an API to persist; here we return an object)
   function createCardObject(type, title, body) {
     return {
       title: title,
       entry: body,
+      // notes left empty; stores will handle memory updates if enabled
       notes: ''
     };
   }
 
+  // Public command: /card Type "Title" <details...>
+  // Suspends narrative and returns the pure card text. The runtime caller (modifier) should handle suspending output.
   function handleCardCommand(commandText) {
+    // commandText starts with '/card'
+    var args = commandText.trim().split(/\s+/);
+    // minimal parse: /card Type "Title" rest
     var m = commandText.match(/^\/card\s+(\S+)\s+"([^"]+)"\s*([\s\S]*)$/i);
     if (!m) {
       return { error: 'Usage: /card Type "Title" <details>' };
@@ -203,6 +228,7 @@
     if (!cfg.aetherheartCards) return { error: 'Card Creator disabled in Configure Aetherheart.' };
 
     var tpl = loadTemplate(type);
+    // If no format lines are defined, default to simple Title + Details body
     var body = '';
     if (tpl.formatLines && tpl.formatLines.length) {
       body = buildCardText(tpl.formatLines, title, details);
@@ -211,46 +237,63 @@
     }
 
     var cardObj = createCardObject(type, title, body);
+    // If master config says new cards perform memory updates, we can run inner-thought extraction against details
     if (cfg.newCardsDoMemory && typeof extractAndStoreInnerSelf === 'function') {
+      // run extraction which will append to notes of the most recent marked card
       extractAndStoreInnerSelf(details);
     }
 
+    // Return an instruction-like object: card only, no narration
     return { card: cardObj, suspended: true };
   }
 
+  // Integrate into simple script modifier flow: intercept messages that start with /card
+  // Provide an onInput wrapper that can be used by scenarios: modifier(text) { if (isCard) return { cardOnly: true, card: ... } }
   function onInput_cardCreator(text) {
     if (!text) return { text: text };
     if (text.trim().indexOf('/card') === 0) {
       var res = handleCardCommand(text);
       if (res.error) return { text: res.error };
       if (res.card) {
+        // Return a special shaped object that the scenario can detect to suspend narration and show card
         return { cardOnly: true, card: res.card };
       }
     }
     return { text: text };
   }
 
+  // Expose the modifier safely
   if (typeof window !== 'undefined') {
     window.onInput_cardCreator = window.onInput_cardCreator || onInput_cardCreator;
   } else {
     try { this.onInput_cardCreator = this.onInput_cardCreator || onInput_cardCreator; } catch (e) {}
   }
 
+  // Patch into an existing onInput pipeline if present (safe non-destructive integration)
   try {
     if (typeof modifier === 'function' && modifier.__patched_for_card_creator !== true) {
       var orig = modifier;
       var patched = function(text){
+        // run card creator first
         var res = onInput_cardCreator(text);
         if (res && res.cardOnly) {
+          // some runtimes expect { text } so we return a serialized message indicating card-only
+          // We'll return a JSON flag that the scenario can interpret. If not supported, this simply becomes text.
           return JSON.stringify({ __cardOnly: true, card: res.card });
         }
+        // else continue original pipeline
         return orig(text);
       };
       patched.__patched_for_card_creator = true;
+      // Replace global modifier if writable
       try { modifier = patched; } catch (e) {}
     }
   } catch (e) {}
 
+  // USAGE NOTE (for maintainers):
+  // - Provide template story cards named exactly: 'TEMPLATE: Character', 'TEMPLATE: Location', etc.
+  // - Each template card must begin with two top-level fields: 'Rules:' then 'Format:' followed by the desired format lines.
+  // - Create a Configure Aetherheart card titled exactly 'CONFIGURE AETHERHEART' to control toggles (Aetherheart Cards: ON/OFF, Min turns cooldown: N, Auto-detect card type: ON/OFF, New cards do memory updates: ON/OFF).
 })();
 
 
@@ -334,10 +377,6 @@
 
 // --------------------------
 // VITALS & SURVIVAL
-// - Tracks HP, MP, Stamina, Hunger, Thirst, Tiredness
-// - Configurable via CONFIGURE AETHERHEART card
-// - Links: Stamina -> Tiredness, MP -> Tiredness (when enabled in config)
-// - Eating restores vitals when enabled
 // --------------------------
 (function(){
   var STATE_ROOT = 'aetherheart';
@@ -379,7 +418,6 @@
 
   function getConfig() { var s = ensureState(); if (!s) return null; return s.vitalsConfig; }
 
-  // Apply a food item effect object: { hungerRestore: N, thirstRestore: N, staminaRestore: N, hpRestore: N, mpRestore: N }
   function applyFoodEffect(effect) {
     var v = getVitals(); if (!v) return false;
     var changed = false;
@@ -391,7 +429,6 @@
     return changed;
   }
 
-  // Advance time by hours and drain hunger/thirst; adjust tiredness based on links
   function tickVitals(hours) {
     var v = getVitals(); if (!v) return false;
     var cfg = getConfig(); if (!cfg) return false;
@@ -400,14 +437,11 @@
     v.hunger = Math.min(100, v.hunger + hungerDelta);
     v.thirst = Math.min(100, v.thirst + thirstDelta);
 
-    // If linked, reduce stamina -> increase tiredness when stamina is low
     if (cfg.linkStaminaToTiredness) {
-      // map stamina to tiredness pressure: when stamina < 50, tiredness increases proportionally
       if (v.stamina < 50) {
         var deficit = (50 - v.stamina) / 50; // 0..1
-        v.tiredness = Math.min(100, v.tiredness + deficit * 5 * hours); // rate
+        v.tiredness = Math.min(100, v.tiredness + deficit * 5 * hours);
       } else {
-        // small recovery when stamina is healthy
         v.tiredness = Math.max(0, v.tiredness - 0.5 * hours);
       }
     }
@@ -416,14 +450,12 @@
         v.tiredness = Math.min(100, v.tiredness + 2 * hours);
       }
     }
-    // clamp
     v.hunger = Math.max(0, Math.min(100, v.hunger));
     v.thirst = Math.max(0, Math.min(100, v.thirst));
     v.tiredness = Math.max(0, Math.min(100, v.tiredness));
     return true;
   }
 
-  // Simple /eat command parser: '/eat <item>' where we have a small builtin food table
   var FOOD_TABLE = {
     bread: { hungerRestore: 15, staminaRestore: 5 },
     stew:  { hungerRestore: 35, staminaRestore: 20 },
@@ -447,7 +479,6 @@
     return 'HP: ' + Math.round(v.hp) + ' / ' + v.maxHp + '\nMP: ' + Math.round(v.mp) + ' / ' + v.maxMp + '\nStamina: ' + Math.round(v.stamina) + ' / ' + v.maxStamina + '\nHunger: ' + Math.round(v.hunger) + '%\nThirst: ' + Math.round(v.thirst) + '%\nTiredness: ' + Math.round(v.tiredness) + '%';
   }
 
-  // Expose a small API
   var Vitals = {
     get: getVitals,
     set: setVitals,
@@ -461,7 +492,6 @@
 
   if (typeof window !== 'undefined') { window.AetherheartVitals = window.AetherheartVitals || Vitals; } else { try { this.AetherheartVitals = this.AetherheartVitals || Vitals; } catch (e) {} }
 
-  // Integrate a minimal onInput handler for vitals commands (/vitals, /eat)
   function onInput_vitals(text) {
     if (!text) return { text: text };
     var t = text.trim();
@@ -482,7 +512,6 @@
     try { this.onInput_vitals = this.onInput_vitals || onInput_vitals; } catch (e) {}
   }
 
-  // Optional: patch modifier pipeline (non-destructive)
   try {
     if (typeof modifier === 'function' && modifier.__patched_for_vitals !== true) {
       var originalModifier = modifier;
@@ -492,6 +521,137 @@
         return originalModifier(text);
       };
       patched.__patched_for_vitals = true;
+      try { modifier = patched; } catch (e) {}
+    }
+  } catch (e) {}
+
+})();
+
+
+// --------------------------
+// UNIVERSAL TICKERS
+// - Multiple tickers tracked under state.aetherheart.tickers
+// - Each ticker: { name, value (0-100), interval (string like '4h'), percentPerInterval }
+// - Commands: /tickers (list), /tock <hours> (advance local tick by hours for testing)
+// --------------------------
+(function(){
+  var STATE_ROOT = 'aetherheart';
+  var VALID_INTERVALS = ['1m','5m','15m','1h','4h','8h','1d','3d','1w','1m','1y','2y'];
+
+  function ensureState() {
+    if (typeof state !== 'object') return null;
+    state[STATE_ROOT] = state[STATE_ROOT] || {};
+    state[STATE_ROOT].tickers = state[STATE_ROOT].tickers || [];
+    return state[STATE_ROOT];
+  }
+
+  function parseIntervalToHours(interval) {
+    if (!interval) return null;
+    var m = interval.match(/^(\d+)(m|h|d|w|y)$/i);
+    if (!m) return null;
+    var n = parseInt(m[1],10);
+    var u = m[2].toLowerCase();
+    switch(u) {
+      case 'm': return n/60.0; // minutes to hours
+      case 'h': return n;
+      case 'd': return n*24;
+      case 'w': return n*24*7;
+      case 'y': return n*24*365;
+    }
+    return null;
+  }
+
+  function listTickers() {
+    var s = ensureState(); if (!s) return [];
+    return s.tickers.map(function(t){ return { name: t.name, value: Math.round(t.value), interval: t.interval, percentPerInterval: t.percentPerInterval }; });
+  }
+
+  function addTicker(name, interval, percentPerInterval) {
+    var s = ensureState(); if (!s) return false;
+    if (!name || !interval) return false;
+    percentPerInterval = typeof percentPerInterval === 'number' ? percentPerInterval : 1; // default 1% per interval
+    // clamp interval to allowed simple pattern
+    var hours = parseIntervalToHours(interval);
+    if (hours === null) return false;
+    // remove existing with same name
+    for (var i = s.tickers.length -1; i >=0; i--) { if (s.tickers[i].name === name) s.tickers.splice(i,1); }
+    s.tickers.push({ name: name, value: 0, interval: interval, percentPerInterval: percentPerInterval });
+    return true;
+  }
+
+  function removeTicker(name) {
+    var s = ensureState(); if (!s) return false;
+    for (var i = s.tickers.length-1;i>=0;i--) { if (s.tickers[i].name === name) { s.tickers.splice(i,1); return true; } }
+    return false;
+  }
+
+  // Advance tickers by given hours. For each ticker, increase value by (hours / intervalHours) * percentPerInterval
+  // Clamp at 100. Return list of tickers that reached 100 this advance.
+  function advanceTickers(hours) {
+    var s = ensureState(); if (!s) return [];
+    var finished = [];
+    s.tickers.forEach(function(t){
+      var ih = parseIntervalToHours(t.interval);
+      if (!ih || ih <= 0) return;
+      var cycles = hours / ih;
+      var delta = cycles * (t.percentPerInterval || 1);
+      if (!isFinite(delta) || delta <= 0) return;
+      t.value = Math.min(100, (t.value || 0) + delta);
+      if (t.value >= 100) finished.push(t.name);
+    });
+    return finished;
+  }
+
+  function tickerStatusText() {
+    var list = listTickers();
+    if (!list.length) return 'No tickers configured.';
+    return list.map(function(t){ return t.name + ': ' + t.value + '%   (interval: ' + t.interval + ')'; }).join('\n');
+  }
+
+  // Expose API
+  var Tickers = {
+    list: listTickers,
+    add: addTicker,
+    remove: removeTicker,
+    advance: advanceTickers,
+    statusText: tickerStatusText
+  };
+
+  if (typeof window !== 'undefined') { window.AetherheartTickers = window.AetherheartTickers || Tickers; } else { try { this.AetherheartTickers = this.AetherheartTickers || Tickers; } catch (e) {} }
+
+  // onInput handlers for testing commands: /tickers and /tock <hours>
+  function onInput_tickers(text) {
+    if (!text) return { text: text };
+    var t = text.trim();
+    if (t.indexOf('/tickers') === 0) {
+      return { text: tickerStatusText() };
+    }
+    var m = t.match(/^\/tock\s+(\d+(?:\.\d+)?)$/i);
+    if (m) {
+      var hours = parseFloat(m[1]);
+      var finished = advanceTickers(hours);
+      var out = 'Advanced tickers by ' + hours + ' hour(s).';
+      if (finished.length) out += '\nTickers finished: ' + finished.join(', ');
+      return { text: out };
+    }
+    return { text: text };
+  }
+
+  if (typeof window !== 'undefined') {
+    window.onInput_tickers = window.onInput_tickers || onInput_tickers;
+  } else {
+    try { this.onInput_tickers = this.onInput_tickers || onInput_tickers; } catch (e) {}
+  }
+
+  try {
+    if (typeof modifier === 'function' && modifier.__patched_for_tickers !== true) {
+      var originalModifier = modifier;
+      var patched = function(text){
+        var r = onInput_tickers(text);
+        if (r && typeof r.text === 'string' && r.text !== text) return r.text;
+        return originalModifier(text);
+      };
+      patched.__patched_for_tickers = true;
       try { modifier = patched; } catch (e) {}
     }
   } catch (e) {}
