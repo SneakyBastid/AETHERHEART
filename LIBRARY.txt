@@ -163,6 +163,96 @@ These rules are strict and mandatory — do not deviate.
 
   })();
 
+  // --------------------------
+  // MODULE: CHARACTER SHEET & PROGRESSION (RP System)
+  // Implements: Level, XP, Stats, Skills, Perks, Powers, /sheet and /xp commands
+  // State: state.aetherheart.character
+  (function(){
+    var ROOT = 'aetherheart';
+
+    function ensure() {
+      if (typeof state !== 'object') return null;
+      state[ROOT] = state[ROOT] || {};
+      state[ROOT].character = state[ROOT].character || {
+        level: 1,
+        xp: 0,
+        xpToNext: 100,
+        stats: { STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10 },
+        skills: [],
+        perks: [],
+        powers: []
+      };
+      return state[ROOT];
+    }
+
+    function getCharacter() { var s = ensure(); if (!s) return null; return s.character; }
+
+    function xpForNext(level) {
+      // simple escalating requirement
+      var l = Number(level) || 1;
+      return Math.max(50, Math.round(100 * Math.pow(l, 1.25)));
+    }
+
+    function addXp(amount) {
+      var s = ensure(); if (!s) return null;
+      var c = s.character;
+      var gain = Math.max(0, Math.floor(Number(amount) || 0));
+      c.xp = (c.xp || 0) + gain;
+      c.xpToNext = c.xpToNext || xpForNext(c.level);
+      var leveled = [];
+      while (c.xp >= c.xpToNext) {
+        c.xp -= c.xpToNext;
+        c.level = (c.level || 1) + 1;
+        c.xpToNext = xpForNext(c.level);
+        // simple rewards on level-up: add a power and bump a stat round-robin
+        c.powers = c.powers || [];
+        c.powers.push('LevelPower_' + c.level);
+        var keys = Object.keys(c.stats || {});
+        var idx = (c.level - 1) % keys.length;
+        if (keys[idx]) c.stats[keys[idx]] = (c.stats[keys[idx]] || 0) + 1;
+        leveled.push({ level: c.level });
+      }
+      return { xp: c.xp, level: c.level, leveled: leveled };
+    }
+
+    function characterStatusText() {
+      var c = getCharacter(); if (!c) return 'Character data unavailable.';
+      var out = [];
+      out.push('== CHARACTER SHEET ==');
+      out.push('Level: ' + c.level + '   XP: ' + (c.xp || 0) + ' / ' + (c.xpToNext || xpForNext(c.level)));
+      out.push('\n-- CORE STATS --');
+      var stats = [];
+      for (var k in c.stats) { if (c.stats.hasOwnProperty(k)) stats.push(k + ' ' + c.stats[k]); }
+      out.push(stats.join('   '));
+      out.push('\n-- SKILLS --');
+      out.push((c.skills && c.skills.length) ? c.skills.join(', ') : '(none)');
+      out.push('\n-- PERKS --');
+      out.push((c.perks && c.perks.length) ? c.perks.join(', ') : '(none)');
+      out.push('\n-- POWERS --');
+      out.push((c.powers && c.powers.length) ? c.powers.join(', ') : '(none)');
+      return out.join('\n');
+    }
+
+    function handleCharacterCommand(text) {
+      if (!text) return { text: text };
+      var t = text.trim();
+      if (t.indexOf('/sheet') === 0) return { text: characterStatusText() };
+      var m = t.match(/^\/xp\s+(\d+)/i);
+      if (m) {
+        var amt = parseInt(m[1],10);
+        var res = addXp(amt);
+        return { text: 'Gained ' + amt + ' XP. Level: ' + res.level + '. Current XP: ' + res.xp };
+      }
+      return { text: text };
+    }
+
+    var Character = { get: getCharacter, addXp: addXp, statusText: characterStatusText };
+    try { if (typeof window !== 'undefined') window.AetherheartCharacter = window.AetherheartCharacter || Character; else this.AetherheartCharacter = this.AetherheartCharacter || Character; } catch(e){}
+
+    try { if (typeof window !== 'undefined') window.onInput_character = window.onInput_character || handleCharacterCommand; else this.onInput_character = this.onInput_character || handleCharacterCommand; } catch(e){}
+
+  })();
+
   // End of added modules for now. Follow-up modules will be added only on your "next" command and per GROK CHAT spec.
 
 })();
