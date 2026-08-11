@@ -1,0 +1,152 @@
+// LIBRARY - AETHERHEART - QUESTS MODULE
+// Adds a Story Arc Engine: quests state, add/update APIs, auto-update, and /quests command
+
+(function(){
+  var STATE_ROOT = 'aetherheart';
+
+  function ensureState() {
+    if (typeof state !== 'object') return null;
+    state[STATE_ROOT] = state[STATE_ROOT] || {};
+    state[STATE_ROOT].quests = state[STATE_ROOT].quests || {
+      list: [],
+      autoUpdate: true,
+      maxActive: 5
+    };
+    return state[STATE_ROOT];
+  }
+
+  function genId() {
+    return 'q_' + Math.random().toString(36).slice(2,9);
+  }
+
+  function listQuests() {
+    var s = ensureState(); if (!s) return [];
+    return s.quests.list.map(function(q){ return { id: q.id, title: q.title, type: q.type, progress: q.progress, status: q.status }; });
+  }
+
+  function addQuest(title, type, description) {
+    var s = ensureState(); if (!s) return null;
+    var q = { id: genId(), title: title || 'Untitled', type: type || 'SIDE', description: description || '', progress: 0, status: 'ACTIVE' };
+    // enforce max active
+    var activeCount = s.quests.list.filter(function(x){ return x.status === 'ACTIVE'; }).length;
+    if (activeCount >= (s.quests.maxActive || 5)) {
+      return { error: 'Max active quests reached (' + (s.quests.maxActive||5) + ')' };
+    }
+    s.quests.list.push(q);
+    return q;
+  }
+
+  function updateQuestProgress(id, newProgress) {
+    var s = ensureState(); if (!s) return { error: 'No state' };
+    var q = s.quests.list.find(function(x){ return x.id === id; });
+    if (!q) return { error: 'Quest not found' };
+    q.progress = Math.max(0, Math.min(100, newProgress));
+    if (q.progress >= 100) q.status = 'COMPLETED';
+    return q;
+  }
+
+  function setQuestStatus(id, status) {
+    var s = ensureState(); if (!s) return { error: 'No state' };
+    var q = s.quests.list.find(function(x){ return x.id === id; });
+    if (!q) return { error: 'Quest not found' };
+    q.status = status;
+    return q;
+  }
+
+  // Simple auto-update: called by external tick/turn logic. Advances progress for active quests by small amount.
+  function autoUpdateQuests(hoursElapsed) {
+    var s = ensureState(); if (!s) return [];
+    if (!s.quests.autoUpdate) return [];
+    var changed = [];
+    var hours = typeof hoursElapsed === 'number' ? hoursElapsed : 1;
+    s.quests.list.forEach(function(q){
+      if (q.status !== 'ACTIVE') return;
+      // rule: main quests advance slower; personal quests advance faster
+      var rate = 0.5; // percent per hour
+      if (/MAIN/i.test(q.type)) rate = 1.0;
+      if (/PERSONAL/i.test(q.type)) rate = 2.0;
+      var delta = rate * hours;
+      var old = q.progress;
+      q.progress = Math.min(100, (q.progress||0) + delta);
+      if (q.progress !== old) {
+        if (q.progress >= 100) q.status = 'COMPLETED';
+        changed.push({ id: q.id, title: q.title, old: old, now: q.progress, status: q.status });
+      }
+    });
+    return changed;
+  }
+
+  // /quests command - list active quests and status
+  function questsStatusText() {
+    var arr = listQuests();
+    if (!arr.length) return 'No quests.';
+    return arr.map(function(q){ return (q.status === 'COMPLETED' ? '[DONE] ' : '') + '[' + q.type + '] ' + q.title + ' (progress ' + Math.round(q.progress) + '%)'; }).join('\n');
+  }
+
+  function handleQuestsCommand(text) {
+    if (!text) return { text: questsStatusText() };
+    var t = (text||'').trim();
+    if (t.indexOf('/quests') === 0) {
+      var mAdd = t.match(/^\/quests\s+add\s+"([^"]+)"\s+(\S+)\s*(.*)$/i);
+      if (mAdd) {
+        var title = mAdd[1];
+        var type = mAdd[2];
+        var desc = mAdd[3] || '';
+        var res = addQuest(title, type, desc);
+        if (res && res.error) return { text: res.error };
+        return { text: 'Added quest: ' + res.title + ' (' + res.id + ')' };
+      }
+      var mUp = t.match(/^\/quests\s+progress\s+(\S+)\s+(\d+)/i);
+      if (mUp) {
+        var id = mUp[1];
+        var perc = parseInt(mUp[2],10);
+        var res = updateQuestProgress(id, perc);
+        if (res && res.error) return { text: res.error };
+        return { text: 'Updated ' + res.title + ' to ' + res.progress + '%' };
+      }
+      return { text: questsStatusText() };
+    }
+    return { text: text };
+  }
+
+  // Expose API
+  var Quests = {
+    list: listQuests,
+    add: addQuest,
+    updateProgress: updateQuestProgress,
+    setStatus: setQuestStatus,
+    autoUpdate: autoUpdateQuests,
+    statusText: questsStatusText
+  };
+
+  if (typeof window !== 'undefined') { window.AetherheartQuests = window.AetherheartQuests || Quests; } else { try { this.AetherheartQuests = this.AetherheartQuests || Quests; } catch (e) {} }
+
+  // onInput handler
+  function onInput_quests(text) {
+    if (!text) return { text: text };
+    var res = handleQuestsCommand(text);
+    if (res && typeof res.text === 'string' && res.text !== text) return { text: res.text };
+    return { text: text };
+  }
+
+  if (typeof window !== 'undefined') {
+    window.onInput_quests = window.onInput_quests || onInput_quests;
+  } else {
+    try { this.onInput_quests = this.onInput_quests || onInput_quests; } catch (e) {}
+  }
+
+  // Patch modifier pipeline minimally
+  try {
+    if (typeof modifier === 'function' && modifier.__patched_for_quests !== true) {
+      var original = modifier;
+      var patched = function(text){
+        var r = onInput_quests(text);
+        if (r && typeof r.text === 'string' && r.text !== text) return r.text;
+        return original(text);
+      };
+      patched.__patched_for_quests = true;
+      try { modifier = patched; } catch (e) {}
+    }
+  } catch (e) {}
+
+})();

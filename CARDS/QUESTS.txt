@@ -1,0 +1,18 @@
+== QUESTS ==
+
+Active: 3 / 5
+Auto-update: ON
+
+1. [MAIN] Deliver the sealed letter to the abbey   (progress 60%)
+2. [SIDE] Find the missing reliquary               (progress 20%)
+3. [PERSONAL] Keep the journal hidden from Aldric  (progress 80%)
+
+[ADD QUEST: Title | type | description]
+[Types: MAIN | SIDE | PERSONAL]
+
+Notes:
+- Quests are stored under state.aetherheart.quests.list as objects: { id, title, type, description, progress, status }.
+- Use /quests to list quests.
+- Add a quest: /quests add "Title" TYPE Optional description
+- Update progress: /quests progress <id> <percent>
+- Auto-update advances active quests over time; the library exposes AetherheartQuests.autoUpdate(hours) for integration with your time/ticker system.
