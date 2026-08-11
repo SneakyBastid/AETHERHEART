@@ -7,6 +7,11 @@ Reworded directive (same requirements, clearer):
 - All runtime code must conform to the AI‑Dungeon style structure and file set: only INPUT.txt, OUTPUT.txt, CONTEXT.txt, and LIBRARY.txt (the consolidated library) are allowed for runtime logic and configuration.
 - Do not create or keep extra cards, modules, or files beyond those specified in GROK CHAT.txt and the four core files above.
 
+ADDITIONAL STRICT RULES (must be followed):
+- DO NOT USE any executable code from GROK CHAT.txt directly. GROK CHAT.txt is the authoritative SPECIFICATION only; do not copy, import, or execute code snippets from it. Implementations must be written in LIBRARY.txt to conform to the spec but must NOT reuse or reference code text from GROK CHAT.txt.
+- DO NOT rename, replace, or alter the original system or character names provided by the repository owner. Keep all names exactly as they appear in the repository (e.g., "Inner Self", card titles, character names). Do NOT introduce new naming (for example, do not add or use the term "Living Drama").
+- If a placeholder is needed, implement it as DEAD placeholder code inside LIBRARY.txt only. Do NOT create separate placeholder files.
+
 These rules are strict and mandatory — do not deviate.
 */
 
