@@ -4,18 +4,12 @@ Core Script: Realmheart
 
 Additional Reference Scripts:
 
-Inner-Self
-Auto-Cards
-Story Arc Engine
-Living Characters
-Character-Continuity
-LoLa
+listed in files in repository
 
 
-All scripts have been pulled from GitHub and added as txt.
+Most scripts have been pulled from GitHub and added as txt.
 
 All features must be fully implemented.
-Use GROK CHAT.txt for all additional features and rules for generating code.
-Code must be made in very small chunks or stalls will occur. Code must be built in an html evironment until complete. Code must follow library input context output four scripts structure for ai dungeon.
+Code must be made in very small chunks or stalls will occur. Code must be built in an html or other virtual evironment until complete. Code must follow library input context output four scripts structure for ai dungeon.
 
-All design work is done. You are only allowed to code not invent new names or systems or layouts for anything already listed. When you need to stop due to tool limits transfer the html to the chat window to be saved in case of chat limits
+All design work is done. You are only allowed to code not invent new names or systems or layouts for anything already listed. When you need to stop due to tool limits transfer the environment file to the chat window to be saved in case of chat limits
