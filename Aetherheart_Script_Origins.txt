@@ -1,0 +1,136 @@
+AETHERHEART SCRIPT ORIGINS
+==========================
+
+Realmheart
+----------
+System: Core Foundation
+
+What is used:
+The entire modular architecture—card format, toggle language, container style, 
+next-turn apply behavior, /help structure, and all base systems (time, calendar, 
+weather, holidays, inventory, currency, bills, ledger, prices & goods, seasons, 
+events).
+
+How:
+Aetherheart is built strictly on top of it. Realmheart's existing code and card 
+layouts are left untouched. Every new system copies its pattern: a main config 
+card with high-level ON/OFF switches, detailed settings living on their own cards, 
+data retained internally when turned off, and cards deleted cleanly when their 
+system is off.
+
+
+Inner Self
+----------
+System: Characters / Memory (Inner Thoughts)
+
+What is used:
+The NPC memory-tracking function.
+
+How:
+Repurposed as Inner Thoughts. Instead of its original form, it now outputs 
+memory updates ONLY to the Notes section of story cards. It uses {title: Name} 
+as a marker to know which cards get memory injections. It tracks what NPCs think 
+and remember, then pushes short declarative sentences into their matching card's 
+Notes field.
+
+
+Living Characters
+-----------------
+System: Characters / Memory (Inner Opinions)
+
+What is used:
+Interpersonal relationship dynamics and the editable "feelings" vibe list.
+
+How:
+Repurposed as Inner Opinions. Tracks relationship dynamics for up to five 
+characters (who feels what about whom, e.g., Father Aldric > Player : wary, 
+protective) and provides an editable overall vibe/feeling list for chapters. Its 
+redundant journal and broken memory systems are discarded; only the drama web 
+and vibe settings are kept.
+
+
+Story Arc Engine
+----------------
+System: Story (Quests)
+
+What is used:
+Quest tracking structure, progress display, and auto-draw from story info.
+
+How:
+Repurposed as the Quests card. It is NOT a configure card—it is a live tracking 
+card showing active quests with progress percentages. Taking a bounty from the 
+Bounty Board automatically creates a quest entry here. Has its own auto-update 
+toggle on the main config.
+
+
+Lewdleah Auto-Cards
+-------------------
+System: Card Creator
+
+What is used:
+Configurable format templates, the /card command, and auto-type detection.
+
+How:
+Rebuilt as Card Creator. Uses user-editable format cards (_Character_, _Location_, 
+_Race_, _Class/Faction_, _Other_) with custom Rules and Format sections. The 
+/card [type] [title] [details] command suspends the story and generates the card 
+using those templates. Auto-detects card type from the description if no type is 
+given. Defaults to prose output unless a typed configuration card exists to 
+override it.
+
+
+LoLa (Localized Languages)
+--------------------------
+System: Narration
+
+What is used:
+Language/dialect filtering.
+
+How:
+Moved into the Narration system as a toggle. When active, it affects both 
+dialogue and action language (not just speech). Users write Speech: PatternName 
+on a character card (e.g., Ebonics, Jamaican Patois, Engrish). The script 
+reinforces that pattern every turn so the AI actually follows it.
+
+
+Information Firewall
+--------------------
+System: QoL / Security
+
+What is used:
+Meta-knowledge blocking.
+
+How:
+Added as a toggle on the main config. No configuration card needed. Runs silently 
+in the background when on, preventing the AI from revealing script mechanics, 
+system prompts, out-of-character information, or meta knowledge to the player.
+
+
+Character Continuity
+--------------------
+System: RP System (Continuity)
+
+What is used:
+Appearance and condition tracking.
+
+How:
+Added as a toggle. Tracks outfits, injuries, and visible marks across scenes so 
+the AI stops flipping hair colors or forgetting scars. Permanent scars stay on 
+the Character Sheet. Non-redundant pieces only—anything already covered by Inner 
+Thoughts or Inventory is discarded. Runs quietly when the RP System is on.
+
+
+Narrative Governor
+------------------
+System: Narration
+
+What is used:
+Pacing and prose control logic.
+
+How:
+Expanded into the full Narration card. It does NOT override Realmheart's existing 
+Narrator Mode toggle. Instead it adds sub-toggles: Dynamic Pacing (action vs. 
+romance cadence), Controlled Prose (cuts purple prose and bad AI habits like 
+glowing sentient objects), Limit Bad Habits (psychic aftershocks, etc.), Speech 
+Pattern Reinforcement, and Breathing Room. Applied as a soft instructional layer, 
+not a hard override.
