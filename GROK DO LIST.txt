@@ -1,0 +1,193 @@
+Copied from last post so no excuses. ignore last post completely. This represents two hours of work and vomiting. do not waste it and get everything done in one turn.
+Implement and test in full as you said you would already today.
+And make the all toggles for speech patterens and story tools no emojis and I’ll get you the full list of both next turn but do searches yourself in active history and grok chat for ‘story splice’ ‘story splices’ ‘speech pattern’ ‘speech patterns’.
+
+So everything in one turn and make it fully work and no bs and don’t let me down. Full confirmation. If I post again after this it means do all of that as well.
+
+____________________________________________________________________________
+
+
+Never discussed but all our time travel mechanics and isekai are tied to Time. Duh! Make sure it works like I said for the mechanics. Normal time travel, shift, sleeve jumpRP the time travel function with emoji I picked goes in RP like this
+
+(Original emoji) Time/Universe Travel Options:
+
+(emoji i already used) Time Travel: OFF
+ 🖲️ Multiverse Shift: OFF
+🕹️ Sleeve Jump: OFF
+🦊 Isekai: OFF
+
+Leave that toward the bottom it got lumped with story and never spoken about and I found the full stack of what we called “story slices” and I don’t like that name. Because I can’t remember what we called it recently it is now hard-locked as Story Tools: ON in Story by default.  
+
+___________________________________________________________________________
+
+
+The Following is a very comprehensive BUT POSSIBLY STILL INCOMPLETE list of shit I dug out of Grok Chat you fucked me on that I dont think is in the current code, including full Story Tools and Speech Patterns
+
+____________________________________________________________________________
+
+
+StoryTools Card Full list: (each is a toggle)
+Fantasy
+Western1880s1920sModernHippiePrisonMysteryCyberpunkSciFiSpaceOpera(anything above is a story mode preset as well and auto toggle ON for each story mode preset by default when selected. Make note of it in configure aetherheart notes instructions.)
+Noir — dry, cynical, rain-slicked observations, short clipped sentences, moral grayness
+Gothic — heavy atmosphere, decay, lingering dread, ornate but controlled prose
+Military / Procedural — crisp, efficient, rank-and-file cadence, minimal flourish
+Fairy Tale — once-upon-a-time rhythm, clear moral framing, slightly archaic warmth
+Found Footage / Documentary — observational, slightly detached, “camera” awareness
+Shonen Battle — escalating declarations, power-of-friendship spikes, dramatic lag between attacks
+Soap Opera — heightened emotion, pregnant pauses, betrayal timing
+Hard Sci-Fi — precise, technical, low-sentiment, cause-and-effect focus
+Sword & Sorcery — muscular, immediate, blood-and-dust physicality
+Cozy Mystery — gentle pacing, polite tension, tea-and-secrets energy
+Confessional Cutaways4th Wall
+Inner Monologue Overlay (short, italicized private thought that doesn’t break the scene)
+Announcement Banner (sitcom-style “Previously on…” or “Meanwhile…” cards)
+Slow-Motion Beat (one key action gets stretched for dramatic weight)
+Record Scratch Freeze (sudden halt + character looks at reader when something absurd happens)
+Structural QoL for this category
+Multiple Tools can be active at once (e.g. Western + Noir)
+Character-level Speech overrides story-level Splice when they conflict
+
+____________________________________________________________________________
+
+
+Speech pattern Full List: (toggles that effect of all story characters. only one can be on at a time. remove instructions for this and speech patterns and move them to the new cards with the new instructions im listing)
+Valley Girl 2.0 (modern influencer cadence)
+Corporate Speak
+Internet Shitposter
+Old Sea Captain
+Southern Belle
+Brooklyn / New York Italian
+Upper-Crust British
+Southern Preacher
+Stoner Philosopher
+Anime Rival
+Cartoon Villain
+Deadpan Snarker
+Overly Literal Android
+Drunk Uncle
+Theater KidEbonics
+Thug Vernacular
+Jamaican Patois
+Engrish
+Southern Drawl
+Cowboy Western
+Pirate
+Ye Olde English
+Valley Girl
+Surfer Dude
+New York Tough
+British Cockney
+Scottish
+Irish
+Russian Accent
+German Accent
+French Accent
+Mafia / Mobster
+Samurai Formal
+Anime Protagonist
+Robot / Synthetic
+Stoner
+Redneck
+Upper-Class Snob
+Drill SergeantClear All
+
+
+If they write {Speech Pattern: blank} in a character story card it makes that character hard locked into that speech pattern. We do not want to do it for a whole story unless other toggles are on. This is to force it to obey. I can write speech patterns all day in story cards but we will inject it not rely on chance. 
+
+Character-level Speech Patterns overrides story-level Tools when they conflict
+Clear All toggles all to OFF. Make sure you do instructions in notes
+
+____________________________________________________________________________
+
+
+As per our original conversation Vampire/Were/Mer configuration card is:
+Transformation trigger: Full Moon / Nightly / Anger / Injury / Manual / Never
+Daywalking: Yes / No / Weakened
+Feeding: Restores HP / MP / Stamina / All / None
+Feeding target: Blood / Flesh / Life Force / Other
+Transformation duration: Until dawn / Timed / Until calm / Permanent until reversed
+Permanent effects while transformed: list (strength boost, regeneration, weakness to silver, etc.)
+Permanent effects while human: list (or none)
+Silver / Holy / Fire vulnerability toggles
+Contagion: Yes / No (bite spreads the condition)
+Frenzy risk: Low / Medium / High / None
+This covers classic, modern, and custom takes without forcing any one version.
+
+Move the instructions to notes.
+
+____________________________________________________________________________
+
+
+drug name: weed
+drug cost: 20
+drug consumables: bowl, bong, blunt
+drug effects: -10 sta, -10 int, -20 hunger, -40 thirst.
+
+____________________________________________________________________________
+
+
+Other solid RP feature toggles (some of these may already be done so verify. dont change it if we already went over it like i think we handled injury already.
+Status Effects:OFF (Poisoned, Bleeding, Exhausted, Blessed, Cursed, etc.) with durations tied to survival.
+Injury: OFF(tied to survival and cant toggle on without it) that can be healed with inventory items. make a set list the cant be crafted and found in loot. make sure looting has natural language. all natural language always is past and present tence, words and phrases.
+Faction standing (separate from personal Reputation and tied to Ranks but not exclusive. meaning of on should boost ranking or drop ranking vs native just climb)
+Rest / Sleep mechanics that properly restore vitals and advance time
+Encumbrance: (tied to inventory. dont list weights just overall weight per inventory card at top as Encumberance: N and N is weight in imperial or metice and move that toggle to configure aetherheart)
+Durability: (can only toggle on if Crafting on)
+
+____________________________________________________________________________
+
+Controlled Prose:Configure Card is: (toggle in Story)
+Dynamic Pacing: OFF
+Action / combat / high-stress moments → shorter sentences, faster feel
+Romance / sex / quiet emotional moments → slower, more detailed
+Entering a new location or meeting someone important → slightly richer description once, then return to normal
+This can be done with a light Narrative Governor style adjustment that only guides the AI, never forces anything. It stays optional so people who want full freedom can turn it off.
+
+Controlled Prose: OFF
+That activates my word and phrasing card thing we made
+Time -Based: OFF
+Whatever we were calling this.
+
+____________________________________________________________________________
+
+
+verify restaurant menu called "menu" is a toggle in Story and and Price Chart function as per discussed in grok chat. grok chat has been updated so no excuse you cant find specifics.. menu suspends chat and so does price chart and all are tied to our improved Prices & Goods
+
+____________________________________________________________________________
+
+
+ESRB Lock disables Export and Import
+We discussed this for Story Tools:
+Make Sure we Have A card for Custom Rules and Make sure the notes explains its for ai instructions AND author's note.
+
+make sure the list of emotions from living characters is modifiable because it doesn't directly say it is and add it to instructions. 
+durability is a part of repair. dug that out too.
+
+____________________________________________________________________________
+
+
+(emoji placeholder) Potions: OFFThis is separate from drugs. You were supposed to make a list like enchantments and it should work like enchantments in terms of crafting. but makes a consumable based on our list of skills and abilities, like our enchantment is supposed to.durration of effects increase with Potion skill ability whatever makes sense in our Dnd labels. (dont forget to name this shit Dnd 5e character shit over like i said) Goes in RP
+
+____________________________________________________________________________
+
+
+***USE SCENE TO FORCE AI MODEL TO NARRATE ALL CHARACTERS NATIVE NO TOGGLE LIKE HIDING CARDS***
+
+Fuckers struggle keeping track of more than two ont he models low tier have access to.
+
+LOGICALLY ORGANIZE ALL FEATURES IN ALL SYSTEMS. MAJOR FEATURES AT TOP IN LOGICAL ORDER AND LESSERS UNDER GROUP WITH A LINE BREAK BY TYPE AND GIVE GROUPS LABELS
+
+Partial example groupings for RP config card:
+
+Main RP Features:
+
+Survival Features:
+
+Memory / Relationship Features:
+
+Time/Universe Travel Options:
+
+____________________________________________________________________________
+
+ONCE ALL OF THIS HAS BEEN DONE SAME TURN, we will look at ALL card layouts you have currently.
